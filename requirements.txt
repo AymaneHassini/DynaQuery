@@ -1,0 +1,37 @@
+# Core LangChain Framework
+langchain==0.3.21
+langchain-community==0.3.7
+langchain-core==0.3.45
+langchain-google-genai==2.1.0
+
+# Google Generative AI (underlying library)
+google-ai-generativelanguage==0.6.16
+google-api-core==2.24.1
+google-auth==2.38.0
+googleapis-common-protos==1.68.0
+
+# Machine Learning & NLP
+torch==2.6.0
+transformers==4.49.0
+sentence-transformers==5.1.0
+nltk==3.9.1
+datasets==3.3.2
+safetensors==0.5.2 # Dependency of transformers
+
+# Vector Store
+chromadb==0.5.0
+
+# Database & Data Handling
+sqlalchemy==2.0.35
+mysql-connector-python==9.2.0
+pydantic==2.10.6 # This is a key dependency for LangChain
+
+# Utilities
+tqdm==4.66.5
+python-dotenv==0.21.0
+requests==2.32.3
+Pillow==11.0.0
+PyPDF2==3.0.1
+
+# For GDrive
+gdown==5.2.0  

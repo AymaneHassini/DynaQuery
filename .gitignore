@@ -1,0 +1,44 @@
+# ==============================================================================
+# Git Ignore file for the DynaQuery Project
+# ==============================================================================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+
+# --- IDEs and Editors ---
+.idea/
+.vscode/
+*.swp
+*~
+
+# --- Operating System Files ---
+.DS_Store
+Thumbs.db
+
+# --- Project-Specific ---
+
+# Local environment variables (NEVER commit secrets!)
+.env
+
+# Large external data downloaded by scripts
+external_data/
+
+# Generated outputs from all experiments
+outputs/
+
+# Generated data samples created by scripts
+# This directory will be created, but its contents should be ignored.
+data_samples/
+
+# Other generated files
+*.sql
+*mismatches*.json
+*results.json
+*.db
+*.sqlite
+*.csv
+*.jsonl
