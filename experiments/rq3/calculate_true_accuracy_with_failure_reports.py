@@ -81,10 +81,8 @@ def calculate_scores(model_name: str, results_file_path: str, predicted_sql_path
                     "ground_truth_sql": dev_item.get("SQL", "N/A"),
                     "predicted_sql": predicted_sqls.get(idx, "PREDICTION NOT FOUND")
                 }
-                # Instead of writing a file, append the report to our list
                 all_failures.append(failure_report)
 
-    # After the loop, save the consolidated list of failures to one file
     output_dir = os.path.dirname(results_file_path)
     report_path = os.path.join(output_dir, f"failures_report_{model_name}.json")
     print(f"Consolidated failure report saved to: '{report_path}'")

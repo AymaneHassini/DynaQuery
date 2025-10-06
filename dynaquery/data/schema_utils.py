@@ -7,7 +7,7 @@ import streamlit as st
 from typing import List
 from operator import itemgetter
 from langchain.chains.openai_tools import create_extraction_chain_pydantic
-from langchain_core.pydantic_v1 import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from config.settings import DB_USER, DB_PASSWORD, DB_HOST, DB_NAME, LLM_MODEL
@@ -84,7 +84,6 @@ def filter_schema_for_tables(selected_tables: List[str]) -> str:
         return table_details # Return the full schema if no tables are selected
         
     return "\n\n".join(
-        # Use the global `table_details` variable
         section for section in table_details.split("\n\n")
         if any(f"Table Name: {table}" in section for table in selected_tables)
     )

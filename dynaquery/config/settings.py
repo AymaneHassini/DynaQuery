@@ -24,7 +24,7 @@ LANGCHAIN_TRACING_V2 = os.getenv("LANGCHAIN_TRACING_V2")
 # Model settings
 LLM_MODEL = "gemini-2.5-pro"
 TEMPERATURE = 0
-CHECKPOINT_PATH = "/Users/aymenhassini/Desktop/working-copy/checkpoint"  # Change to the Path to BERT model checkpoint
+CHECKPOINT_PATH = "/Users/aymenhassini/Desktop/workspace-29-sept/best-model-sept-29"  # Change to the Path to BERT model checkpoint after downloading it from RELEASES (check README)
 
 # Database URI builder
 def get_mysql_uri():
@@ -46,5 +46,4 @@ def validate_config():
         raise ValueError(f"Missing environment variables: {', '.join(missing)}")
     return True
 
-# Initialize validation on import
 validate_config()

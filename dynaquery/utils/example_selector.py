@@ -34,20 +34,15 @@ def get_spider_example_selector(embedding_model):
             for item in train_data
         ]
 
-        # --- THE FIX IS HERE ---
-        # We need to extract the texts (questions) to be embedded.
         example_texts = [example["input"] for example in examples]
         
-        # The correct method is Chroma.from_texts.
-        # We pass the full examples as metadata to retrieve them later.
         _vector_store_singleton = Chroma.from_texts(
             texts=example_texts,
             embedding=embedding_model,
-            metadatas=examples  # Store the full example dict in metadata
+            metadatas=examples 
         )
         print("Vector store for example selection built successfully.")
 
-    # Always create and return a NEW selector instance.
     # This is lightweight and points to our heavy, cached vector store.
     example_selector = SemanticSimilarityExampleSelector(
         vectorstore=_vector_store_singleton,

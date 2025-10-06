@@ -41,21 +41,10 @@ Output only the JOIN clauses themselves, without the initial SELECT statement.
 
 # Per-row Reasoning Guidelines
 REASONING_GUIDELINES = """
-IMPORTANT GUIDELINES:
+REASONING RULES:
 1. You will see every field in this record—treat them all as evidence.
 2. Walk through each field step by step (chain-of-thought) to decide if this record matches the user's question.
-3. Conclusion: [Yes or No]
-4. Match Score: [0-100]
-5. Use your reasoning and inference/context understanding capabilities.
-6. FINALLY, on the very last line, add a summary for our classifier. This line MUST start with the prefix "BERT_SUMMARY:" and follow the format: "Answer: [A short justification based on your reasoning], Match Score: [the same score from step 4]"
-
----
-EXAMPLE OF THE FINAL LINES:
-[...detailed reasoning...]
-Conclusion: Yes
-Match Score: 100
-BERT_SUMMARY: Answer: The image clearly shows a green lid which matches the query, Match Score: 100
----
+3. Use your reasoning and inference/context understanding capabilities.
 """
 
 # Final SQL Generation Prompt
@@ -93,10 +82,8 @@ def create_few_shot_prompt():
     
     # 2. Define the overall prompt structure that will incorporate the examples.
     few_shot_prompt = FewShotPromptTemplate(
-        # This is where the dynamically selected examples will be injected.
-        example_selector=None, # We will provide this dynamically in the chain.
+        example_selector=None, 
         example_prompt=example_prompt,
-        # The text that comes before the examples.
         prefix="""You are a MySQL expert. Given a user question and a database schema, create a syntactically correct MySQL query.
 You are given some examples of user questions and their corresponding SQL queries.
 
@@ -107,11 +94,8 @@ Use this schema:
         input_variables=["input", "table_info"],
     )
     
-    # We wrap it in a ChatPromptTemplate for compatibility with chat models.
     return ChatPromptTemplate.from_messages([
         ("system", few_shot_prompt.prefix),
         MessagesPlaceholder(variable_name="messages"),
         ("human", few_shot_prompt.suffix),
-        # Note: The few-shot examples will be formatted into the history by the chain itself.
-        # This is a conceptual representation; the actual implementation is in the chain logic.
     ])

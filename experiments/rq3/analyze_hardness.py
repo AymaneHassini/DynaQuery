@@ -6,9 +6,6 @@ import os
 import sqlite3
 from tqdm import tqdm
 
-# --- Step 1: Our New, Robust Hardness Classifier ---
-# This section replaces the dependency on the broken Spider parser.
-# It works directly on SQL query strings.
 
 def classify_hardness_by_keywords(sql_str: str) -> str:
     """
@@ -35,7 +32,6 @@ def classify_hardness_by_keywords(sql_str: str) -> str:
         count_others += 1
     
     # Count select columns (approximate by counting commas in the SELECT clause)
-    # This is a bit tricky, but we can look for the first 'select' and the first 'from'
     try:
         select_clause = sql_lower.split('select', 1)[1].split('from', 1)[0]
         if ',' in select_clause:

@@ -1,8 +1,8 @@
 # main.py
 """
 Streamlit application for the DynaQuery Framework.
-Provides a user interface to interact with and compare the Structured Query Pipeline (SQP)
-and the Generalized Multimodal Pipeline (MMP).
+Provides a user interface to interact with and compare SQP and the two versions of MMP,
+preserving the original simple layout with enhanced comparison and UI locking.
 """
 import streamlit as st
 from chains.sqp import invoke_sqp
@@ -13,86 +13,80 @@ def main():
     st.title("DynaQuery: Live Demo")
     
     # --- Initialize Session State ---
-    # We only need three state variables
     if "messages" not in st.session_state:
         st.session_state.messages = []
     if "last_user_query" not in st.session_state:
         st.session_state.last_user_query = ""
     if "last_pipeline_used" not in st.session_state:
         st.session_state.last_pipeline_used = ""
+    if "processing" not in st.session_state:
+        st.session_state.processing = False
 
     # --- UI Elements ---
-    # Mode selection for the *next* query submitted via the chat input
+    # --- define the list of pipelines to match the radio button options ---
+    ALL_PIPELINES = [
+        "Structured Query Pipeline (SQP)", 
+        "MMP (BERT Classifier)", 
+        "MMP (LLM-Native Classifier)"
+    ]
+    
     mode = st.radio(
         "Default Pipeline for New Queries", 
-        ["Structured Query Pipeline (SQP)", "Generalized Multimodal Pipeline (MMP)"]
+        options=ALL_PIPELINES, # use the defined list
+        disabled=st.session_state.processing
     )
     
-    # Display the entire conversation history
+    # display the entire conversation history
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
     
-    # --- Handle New User Input from Chat Box ---
-    if user_query := st.chat_input("Enter your query..."):
-        # Update state with the latest query and the pipeline we are about to use
+    # --- handle new user input from chat box ---
+    if user_query := st.chat_input("Enter your query...", disabled=st.session_state.processing):
+        st.session_state.processing = True
         st.session_state.last_user_query = user_query
         st.session_state.last_pipeline_used = mode
-        
-        # Add user message to history and display it
         st.session_state.messages.append({"role": "user", "content": user_query})
-        with st.chat_message("user"):
-            st.markdown(user_query)
-        
-        # Generate and display the assistant's response
-        with st.chat_message("assistant"):
-            with st.spinner(f"Processing with {mode}..."):
-                if "SQP" in mode:
-                    response = invoke_sqp(user_query, st.session_state.messages)
-                else: # MMP mode
-                    response = invoke_mmp(user_query, st.session_state.messages)
-                st.markdown(response)
-        
-        # Add assistant's response to the chat history
-        st.session_state.messages.append({"role": "assistant", "content": response})
-        # Rerun to ensure the "re-run" button appears immediately
         st.rerun()
 
-    # --- "Try the Other Pipeline" Button Logic ---
-    # This button only appears after at least one query has been run
-    if st.session_state.last_user_query:
-        # Determine which pipeline is the "other" one
-        if "SQP" in st.session_state.last_pipeline_used:
-            other_pipeline_name = "Generalized Multimodal Pipeline (MMP)"
-            button_label = f"🔍 Re-run with {other_pipeline_name}"
-        else:
-            other_pipeline_name = "Structured Query Pipeline (SQP)"
-            button_label = f"🔍 Re-run with {other_pipeline_name}"
+    # --- central processing block ---
+    if st.session_state.processing:
+        query_to_run = st.session_state.last_user_query
+        pipeline_to_run = st.session_state.last_pipeline_used
 
-        if st.button(button_label):
-            query_to_rerun = st.session_state.last_user_query
-            
-            # Update the state to reflect the new pipeline being used
-            st.session_state.last_pipeline_used = other_pipeline_name
-            
-            # Add a message to the chat to inform the user what's happening
-            st.session_state.messages.append({
-                "role": "assistant", 
-                "content": f"Running the last query ('{query_to_rerun}') again using the **{other_pipeline_name}**..."
-            })
+        info_message = f"Running query with the **{pipeline_to_run}**..."
+        st.session_state.messages.append({"role": "assistant", "content": info_message})
+        with st.chat_message("assistant"):
+            st.markdown(info_message)
 
-            # Generate and display the new response
-            with st.chat_message("assistant"):
-                with st.spinner(f"Processing with {other_pipeline_name}..."):
-                    if "SQP" in other_pipeline_name:
-                        response = invoke_sqp(query_to_rerun, st.session_state.messages)
-                    else: # MMP mode
-                        response = invoke_mmp(query_to_rerun, st.session_state.messages)
-                    st.markdown(response)
-            
-            # Add the new response to the chat history
-            st.session_state.messages.append({"role": "assistant", "content": response})
-            # Rerun the script to update the display instantly
+        with st.chat_message("assistant"):
+            with st.spinner(f"Processing with {pipeline_to_run}..."):
+                if "SQP" in pipeline_to_run:
+                    response = invoke_sqp(query_to_run, st.session_state.messages)
+                elif "BERT" in pipeline_to_run:
+                    response = invoke_mmp(query_to_run, st.session_state.messages, classifier_type="bert")
+                else: # LLM-Native
+                    response = invoke_mmp(query_to_run, st.session_state.messages, classifier_type="llm")
+                st.markdown(response)
+        
+        st.session_state.messages.append({"role": "assistant", "content": response})
+        st.session_state.processing = False
+        st.rerun()
+
+    if st.session_state.last_user_query and not st.session_state.processing:
+        last_run = st.session_state.last_pipeline_used
+        other_pipelines = [p for p in ALL_PIPELINES if p != last_run]
+        st.write("---")
+        col1, col2 = st.columns(2)
+
+        if col1.button(f"🔍 Re-run with {other_pipelines[0]}"):
+            st.session_state.last_pipeline_used = other_pipelines[0]
+            st.session_state.processing = True
+            st.rerun()
+
+        if col2.button(f"🔍 Re-run with {other_pipelines[1]}"):
+            st.session_state.last_pipeline_used = other_pipelines[1]
+            st.session_state.processing = True
             st.rerun()
 
 if __name__ == "__main__":

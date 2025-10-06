@@ -6,10 +6,9 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.chains.openai_tools import create_extraction_chain_pydantic
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from data.schema_utils import QueryPlan # We will import the Pydantic model
+from data.schema_utils import QueryPlan 
 from config.settings import LLM_MODEL
 
-# Initialize models once to be reused
 llm = ChatGoogleGenerativeAI(model=LLM_MODEL, temperature=0)
 embedding_model = HuggingFaceEmbeddings(model_name="BAAI/llm-embedder")
 
@@ -35,8 +34,6 @@ def create_dynamic_rag_retriever(schema_str: str):
     Builds a RAG retriever for a specific database schema string.
     """
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=100)
-    schema_chunks = text_splitter.split_text(schema_str)
-    
-    # Create a transient, in-memory vector store for this specific schema
+    schema_chunks = text_splitter.split_text(schema_str)  
     vector_store = Chroma.from_texts(texts=schema_chunks, embedding=embedding_model)
     return vector_store.as_retriever(search_kwargs={"k": 4})

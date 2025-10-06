@@ -35,3 +35,6 @@ PyPDF2==3.0.1
 
 # For GDrive
 gdown==5.2.0  
+
+# For Kaggle API
+kaggle==1.7.4.5

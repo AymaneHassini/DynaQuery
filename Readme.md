@@ -10,7 +10,8 @@ The contents of this artifact support full reproduction of the main experimental
 
 -   `/dynaquery`: Core source code for the DynaQuery framework.
 -   `/experiments`: Self-contained Python scripts used to generate and evaluate all experimental results.
--   `/data_samples`: Curated data samples used for evaluation.
+-   `/setup`: Files required for the initial experimental setup (e.g., database dump).
+-   `/artifacts`: Static, verifiable artifacts (e.g., execution logs, ground truth) that support the qualitative analyses in the paper.
 -   `download_data.sh`: Script to automatically download external datasets.
 -   `requirements.txt`: Python package dependencies required to run the code.
 -   `LICENSE`: License for this repository.
@@ -23,6 +24,8 @@ The contents of this artifact support full reproduction of the main experimental
 -   A Unix-like environment (Linux, macOS, WSL) with `bash`, `wget`/`curl`, `unzip`, and `git`.
 -   Python 3.9+
 -   `gdown` for downloading from Google Drive (`pip install gdown`).
+-   A Kaggle account and the `kaggle` CLI package.
+-   A running MySQL server instance (required for the RQ2 case study and live demo).
 
 ---
 
@@ -40,8 +43,16 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
+### Step 3. Download Pre-trained Model Checkpoint
 
-### Step 3. Configure API Keys
+Our experiments rely on a fine-tuned BERT model. For convenience and reproducibility, we provide the exact model checkpoint used in our paper.
+
+1- Navigate to the **Releases** page of this GitHub repository and download the `bert-checkpoint-rq2.zip` file.  
+2- Unzip the file to a stable location on your machine.
+3- Open `dynaquery/config/settings.py` and update the `CHECKPOINT_PATH` variable to point to the location of the unzipped directory.  
+We strongly recommend using an **absolute path**.
+
+### Step 4. Configure API Keys and Database Credentials
 
 Create a `.env` file by copying the provided template.
 
@@ -49,9 +60,24 @@ Create a `.env` file by copying the provided template.
 cp .env.example .env
 ```
 Then, edit the .env file and add your GOOGLE_API_KEY and database credentials.
-### Step 4. Download Benchmark Data
 
-This script will download all external datasets required for the experiments into a new `external_data/` directory. This directory is not part of the repository and will be created by the script. The download size is approximately 550MB.
+### Kaggle API Key (Required for Dataset Download)
+
+Our primary training dataset is hosted on **Kaggle**. The automated download script requires the Kaggle API to be configured.
+
+1. Log in to your [Kaggle account](https://www.kaggle.com/settings).  
+2. Go to your **Account Settings** page and click **"Create New API Token"**.  
+   This will download a `kaggle.json` file.  
+3. Place this file in a `.kaggle` directory in your home folder:
+
+```bash
+mkdir -p ~/.kaggle
+mv ~/Downloads/kaggle.json ~/.kaggle/
+chmod 600 ~/.kaggle/kaggle.json
+```
+### Step 5. Download Benchmark Data
+
+This script will download all large external datasets (Spider, BIRD, and our Annotated Rationale Dataset) into a new  `external_data/` directory.
 
 ```bash
 bash download_data.sh
@@ -63,7 +89,99 @@ This section details how to reproduce the key results from the paper.
 
 **IMPORTANT:** All commands must be run from the root directory of the DynaQuery repository.
 
-### 2.1: Spider Evaluation
+## 2.1 RQ1: MMP Generalization Case Study 
+
+## 2.2 RQ2: Classifier Trade-off Analysis 
+
+### 2.2.1 Setup for the OOD Case Study
+
+The OOD case study requires a small, persistent **MySQL database**.
+
+#### Create the Database
+First, log in to your MySQL server and create a new database:
+
+```sql
+-- (In your MySQL client)
+CREATE DATABASE dynaquery_ood;
+```
+#### Load the Data
+
+From your terminal (not the MySQL client), run the following command to load the schema and data.  
+Replace `[username]` with your MySQL username. You will be prompted for your password.
+
+```bash
+mysql -u [username] -p dynaquery_ood < setup/ood_database.sql
+```
+**Update Credentials:**  
+Ensure your `.env` file is configured with the correct credentials to access the `dynaquery_ood` database.
+
+### 2.2.2 Reproducing the In-Distribution (IID) Results (Table 2)
+
+This experiment evaluates the three classifier architectures on our **1,000-sample IID test set**.  
+The required `train_split.csv` (4,000 samples) and `test_split.csv` (1,000 samples) files are included in the **DynaQuery-Eval-5K** benchmark, which is downloaded into the `external_data/` directory during setup.
+
+#### 1. Evaluate the Fine-Tuned BERT Specialist
+
+This command re-trains the **BERT model** from scratch using the provided training split and evaluates it on the test split.  
+The command includes the exact hyperparameters we used in training.
+
+```bash
+python -m experiments.rq2.bert.train \
+    --train_file external_data/dynaquery_eval_5k_benchmark/train_split.csv \
+    --test_file external_data/dynaquery_eval_5k_benchmark/test_split.csv \
+    --epochs 4 \
+    --learning_rate 2e-5 \
+    --batch_size 32 \
+    --output_dir outputs/rq2/bert_retrained_checkpoint
+```
+**Expected Output:**  
+The script will train the model and then print a final evaluation report.  
+The `eval_F1_macro` score should be approximately **0.991**.
+
+#### 2. Evaluate the LLM Generalists
+
+**LLM (Rule-Based Prompt):**  
+This is the default behavior of the script and represents our final, recommended architecture.
+```bash
+python -m experiments.rq2.run_rq2_classifier_comparison 
+```
+**Expected Output:**  
+The macro F1-score should be approximately **78.0%**.
+**(Optional) LLM (Descriptive Prompt):**  
+To reproduce the score for the descriptive prompt, you must manually edit the `dynaquery/chains/llm_classifier.py` file.  
+Inside the `get_llm_native_classifier_chain` function, perform the following two steps:
+
+1. Comment out the active **"Rule-Based Prompt"** string.  
+2. Uncomment the inactive **"Descriptive Prompt"** string provided in the comments.
+
+After saving the change, run the evaluation command again from from the project root directory:
+
+```bash
+python -m experiments.rq2.run_rq2_classifier_comparison 
+```
+**Expected Output:**  
+With the descriptive prompt active, the macro `F1_macro` should be approximately 94.7%.
+
+**Artifact Note:**  
+For full transparency, we also provide the script used to generate the data splits at `experiments/rq2/bert/split.py`.  
+Running this script is **not necessary** to reproduce the results, as the output files are already provided in the Kaggle download.
+
+### 2.2.3 Verifying the Out-of-Distribution (OOD) Case Study (Table 3 & Figure 2)
+
+The analysis in the paper is based on static, verifiable execution logs from our **OOD experiment**, which are provided as research artifacts.
+- **Verifiable Execution Logs:** The complete console output for each pipeline is located in:
+  - `artifacts/rq2/bert_run_log.txt`
+  - `artifacts/rq2/llm_descriptive_run_log.txt`
+  - `artifacts/rq2/llm_rule_based_run_log.txt`
+
+- **Human-Annotated Ground Truth:** The expected correct classification and justification for each query is provided in the subdirectory:
+  - `artifacts/rq2/ground_truth/`
+
+To verify our claims, inspect these execution logs. For instance, the BERT failure in Figure 2(a) can be confirmed by examining the `"Question 2"` block in `artifacts/rq2/bert_run_log.txt`.
+
+### 2.3: RQ3: Spider and BIRD Evaluation
+
+### 2.3.1: Spider Evaluation
 
 The following three-stage process reproduces our results on the Spider benchmark, as presented in Tables [2] and [3] of the paper.
 
@@ -73,7 +191,7 @@ This first experiment evaluates the component-level performance (Precision, Reca
 
 **Command:**
 ```bash
-python -m experiments.run_rq3_spider_linking
+python -m experiments.rq3.run_rq3_spider_linking
 ```
 ## What this script does
 **Step 1 (Data Preparation):**  
@@ -91,7 +209,7 @@ This script uses the sample file created in Stage 1 to run the full DynaQuery an
 
 **Command:**
 ```bash
-python -m experiments.run_rq3_spider_e2e
+python -m experiments.rq3.run_rq3_spider_e2e
 ```
 **Expected Output:**
 The script will run for a significant amount of time (approx. 2-3 hours). It will create three new files in the `outputs/spider/` directory:
@@ -107,14 +225,14 @@ This final stage uses our robust, self-contained analysis script to calculate th
 ##### **Analyze DynaQuery (SILE)**
 
 ```bash
-python -m experiments.analyze_hardness \
+python -m experiments.rq3.analyze_hardness \
     --pred_file outputs/spider/predictions_dynaquery-schema-linking.sql \
     --gold_file outputs/spider/dev_gold_sample-schema-linking.sql \
     --db_dir external_data/spider/database/
 ```
 ##### **Analyze RAG**
 ```bash
-python -m experiments.analyze_hardness \
+python -m experiments.rq3.analyze_hardness \
     --pred_file outputs/spider/predictions_rag-schema-linking.sql \
     --gold_file outputs/spider/dev_gold_sample-schema-linking.sql \
     --db_dir external_data/spider/database/
@@ -122,7 +240,7 @@ python -m experiments.analyze_hardness \
 **Expected Output:**
 Each command will run quickly and print a formatted table breaking down the Execution Accuracy by difficulty. The overall EA for DynaQuery should be **80.0%** and for the RAG baseline should be **57.1%**.
 
-### 2.2 BIRD Generalization Evaluation
+### 2.3.3 BIRD Generalization Evaluation
 
 This four-stage process reproduces our results on the BIRD benchmark, as presented in Tables [4] and [5] of the paper.
 
@@ -134,7 +252,7 @@ This first script is the main entry point for the BIRD experiment. It performs t
 
 **Command:**
 ```bash
-python -m experiments.run_rq3_bird_e2e
+python -m experiments.rq3.run_rq3_bird_e2e
 ```
 **Output:**
 - `data_samples/bird_dev_sample_500.json (The stratified sample file)`
@@ -199,7 +317,7 @@ This stage uses our custom analysis scripts to parse the raw reports from Stage 
 
 **Step 3a: Calculate Final Execution Accuracy (Table [6]) and Generate Failure Reports**
 ```bash
-python -m experiments.calculate_true_ves
+python -m experiments.rq3.calculate_true_ves
 ```
 **Output:**
 - Prints the final, stratified VES breakdown tables for both models.
@@ -210,21 +328,22 @@ This final script takes the failure reports generated in Stage 3a and uses `sqlg
 
 **Command:**
 ```bash
-python -m experiments.analyze_rq3_bird_failures
+python -m experiments.rq3.analyze_rq3_bird_failures
 ```
 **Output:**
 - Prints the two failure analysis summary tables (one for DynaQuery, one for RAG).  
 - Creates detailed `..._analyzed.json` reports in the `outputs/bird/` directory.
 
 
+---
 ## 3. Licenses and Acknowledgements
 
-The original code for the DynaQuery framework, contained in the `/dynaquery` and `/experiments` directories, is licensed under the **[MIT License](LICENSE)**.
+The original code for the DynaQuery framework is licensed under the **[MIT License](LICENSE)**.
 
-This work builds upon, and our artifact includes derivative works of, several excellent open-source projects. We are grateful to their creators for making their work available.
+This work builds upon, includes derivative works of, and uses data from several excellent open-source projects. We are grateful to their creators for making their work available.
 
--   **Spider Benchmark Tooling:** Our evaluation scripts in `experiments/analysis/` are derivative works of the official Spider benchmark tooling. They are used in compliance with the **Apache License 2.0**. The full license text is available in `LICENSES/LICENSE-APACHE-2.0-SPIDER.txt`.
+-   **Spider Benchmark Tooling:** Our evaluation scripts in `/experiments/analysis/` are derivative works of the official Spider benchmark tooling and are used in compliance with the **Apache License 2.0**. The full license text is available in `LICENSES/LICENSE-SPIDER-EVAL.txt`.
 
--   **BIRD Benchmark Tooling:** The evaluation scripts in `vendor/bird_eval/` are derivative works of the official BIRD benchmark tooling. They are used in compliance with the **MIT License**. The full license text is available in `LICENSES/LICENSE-BIRD-EVAL.txt`.
+-   **BIRD Benchmark Tooling:** The evaluation scripts in `vendor/bird_eval/` are derivative works of the official BIRD benchmark tooling and are used in compliance with the **MIT License**. The full license text is available in `LICENSES/LICENSE-BIRD-EVAL.txt`.
 
 -   **Public Datasets:** This project requires several public datasets for evaluation. Please see `LICENSES/DATA_LICENSES.md` for information regarding their respective licenses.

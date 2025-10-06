@@ -165,10 +165,8 @@ if __name__ == '__main__':
     print('===========================================================================================')
     print("Finished evaluation")
     if args.output_path:
-        # --- THE FIX IS HERE ---
         output_dir = os.path.dirname(args.output_path)
         os.makedirs(output_dir, exist_ok=True)
-        # ---------------------
         print(f"Saving detailed results to {args.output_path}...")
         with open(args.output_path, 'w') as f:
             json.dump(exec_result, f, indent=4)

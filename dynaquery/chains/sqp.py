@@ -24,9 +24,8 @@ def get_sqp_chain():
     # 2) Create final prompt (Zero-Shot)
     final_prompt = create_zero_shot_prompt()
     
-    # 3) SQL query generator (NOW BUILT MANUALLY)
-    # This is a standard LangChain Expression Language (LCEL) chain.
-    # It takes the prompt, pipes it to the LLM, and then to a string parser.
+    # 3) SQL query generator
+
     generate_query = final_prompt | llm | StrOutputParser()
     
     # 4) Clean query utility
@@ -35,11 +34,9 @@ def get_sqp_chain():
     # 5) Dynamic table extraction & filtering (SILE)
     sile_chain = (
         RunnablePassthrough.assign(
-            # The table_chain now returns a QueryPlan object
             query_plan=lambda x: table_chain.invoke({"input": x["question"]})[0]
         )
         | RunnablePassthrough.assign(
-            # We need to construct the list of all tables for filtering
             all_tables=lambda x: [x["query_plan"].base_table] + x["query_plan"].join_tables
         )
         | RunnablePassthrough.assign(
@@ -52,7 +49,6 @@ def get_sqp_chain():
         sile_chain
         | RunnablePassthrough.assign(table_info=lambda x: x["filtered_schema"])
         | RunnablePassthrough.assign(
-            # The input to generate_query must match the prompt's variables
             query=lambda x: generate_query.invoke({
                 "table_info": x["table_info"],
                 "input": x["input"],

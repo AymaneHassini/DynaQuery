@@ -11,7 +11,6 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 
 from data.schema_utils import get_table_details
 
-# A global variable to cache the retriever so we don't rebuild it every time
 _rag_retriever = None
 
 def get_rag_schema_retriever():

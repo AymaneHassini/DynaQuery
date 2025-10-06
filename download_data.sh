@@ -96,5 +96,39 @@ else
     echo "--> BIRD data directory already exists. Skipping download."
 fi
 
+
+# --- Step 4: Download DynaQuery-Eval-5K Benchmark Dataset from Kaggle ---
+RATIONALE_DATA_DIR="external_data/dynaquery_eval_5k_benchmark"
+if [ ! -d "$RATIONALE_DATA_DIR" ]; then
+    echo "--> Downloading the DynaQuery-Eval-5K Benchmark Dataset from Kaggle..."
+
+    # Check if Kaggle API credentials exist
+    if ! command -v kaggle &> /dev/null || [ ! -f ~/.kaggle/kaggle.json ]; then
+        echo "[ERROR] Kaggle API credentials not found or 'kaggle' command is not installed."
+        echo "This is a required step to download the main evaluation dataset."
+        echo "Please follow the setup instructions in the README.md for configuring the Kaggle API, then re-run this script."
+        exit 1
+    fi
+
+    # === Kaggle Dataset ID ===
+    KAGGLE_DATASET_ID="aymanehassini/dynaquery-eval-5k-benchmark"
+    # ==========================
+
+    echo "    --> Downloading from Kaggle: $KAGGLE_DATASET_ID"
+    mkdir -p "$RATIONALE_DATA_DIR"
+
+    kaggle datasets download -d "$KAGGLE_DATASET_ID" -p "$RATIONALE_DATA_DIR" --unzip
+
+    if [ $? -eq 0 ]; then
+        echo "   DynaQuery-Eval-5K Benchmark Dataset is ready in ${RATIONALE_DATA_DIR}."
+    else
+        echo "[ERROR]  Failed to download dataset from Kaggle. Please check your credentials and the dataset ID."
+        exit 1
+    fi
+else
+    echo "--> DynaQuery-Eval-5K Benchmark directory already exists. Skipping download."
+fi
+
+
 echo ""
 echo "--- All external data has been successfully downloaded and set up. ---"

@@ -46,7 +46,6 @@ def calculate_ves_scores(model_name: str, results_file_path: str):
         if question_id in sample_ids:
             difficulty = sample_info[question_id]
             total_by_difficulty[difficulty] += 1
-            # Add the raw time_ratio to the list for that difficulty
             scores_by_difficulty[difficulty].append(result.get('time_ratio', 0))
 
     # 4. Calculate and print the final, true VES scores

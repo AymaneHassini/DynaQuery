@@ -1,205 +1,209 @@
 # chains/mmp.py
-
 """
-Advanced integrated pipeline implementation with row-level reasoning.
+Final, correct, and robust MMP implementation with enhanced debugging.
+This version uses a true two-step "Reason -> Classify" architecture for both
+BERT and LLM-native classifiers, ensuring a fair and direct comparison.
 """
 from tqdm import tqdm
 from sqlalchemy import inspect, types
 import torch
 import torch.nn.functional as F
-
 from data.db_connector import get_langchain_db, get_query_tool
 from data.schema_utils import table_chain, get_table_details, filter_schema_for_tables
 from models.llm import load_llm
 from models.classifier import load_classifier_bert
 from preprocessing.image import preprocess_and_check_image
-from preprocessing.text import tokenize
 from prompts.templates import REASONING_GUIDELINES
+from chains.llm_classifier import get_llm_native_classifier_chain, classify_with_llm
 from utils.join import generate_left_join_query
-from utils.sql import build_where_clause
 from chains.answer_chain import format_answer
 
 def process_candidate_row(
     row: tuple,
     columns: list[str],
-    image_idx: int = None,
-    doc_idx: int = None,
-    user_prompt: str = ""
+    multimodal_indices: dict,
+    user_prompt: str
 ) -> str:
-    """
-    Process a single candidate row with the LLM.
-    
-    Args:
-        row: Database row as a tuple
-        columns: Column names
-        image_idx: Index of image column (if any)
-        doc_idx: Index of document column (if any)
-        user_prompt: Original user question
-        
-    Returns:
-        str: LLM reasoning about the row
-    """
-    # Get LLM
     llm = load_llm()
-    
-    # 1) Render all column:value pairs
     field_lines = "\n".join(f"- {columns[i]}: {row[i]!r}" for i in range(len(columns)))
-    print("🔍 [DEBUG] Field lines for this row:\n", field_lines)
-
-    # 2) Build chain-of-thought prompt
-    prompt = f"""
+    prompt_text = f"""
     User's question: "{user_prompt}"
     Here is one candidate record with all its fields:
     {field_lines}
     {REASONING_GUIDELINES}
     """
-    print("📝 [DEBUG] Full prompt sent to LLM:\n", prompt)
-
-    # 3) Dispatch to correct modality
-    if image_idx is not None and row[image_idx] is not None:
-        # Preprocess the image
-        image = preprocess_and_check_image(row[image_idx])
-        # Feed the image and prompt to the LLM
-        resp = llm.generate_content([image, "\n\n", prompt])
-    elif doc_idx is not None and row[doc_idx] is not None:
-        # Feed the document and prompt to the LLM
-        document = row[doc_idx]
-        resp = llm.generate_content([document, prompt])
-    else:
-        # Text-only prompt
-        resp = llm.generate_content([prompt])
-        
-    print("📬 [DEBUG] LLM response:", resp.text)
+    print("\n" + "="*50)
+    print("      STEP 1: RATIONALE GENERATION (API Call #1)")
+    print("="*50)
+    print("📝 [DEBUG] Full text prompt for Rationale Generation:\n", prompt_text)
+    llm_content_list = []
+    for idx in multimodal_indices.get("image", []):
+        if row[idx] is not None:
+            try:
+                image = preprocess_and_check_image(row[idx])
+                llm_content_list.append(image)
+            except Exception as e:
+                print(f"WARNING ▶ Could not process image from column '{columns[idx]}': {e}")
+    for idx in multimodal_indices.get("document", []):
+        if row[idx] is not None:
+            llm_content_list.append(str(row[idx]))
+    llm_content_list.append(prompt_text)
+    resp = llm.generate_content(llm_content_list)
+    print("📬 [DEBUG] LLM Rationale Generated:", resp.text)
     return resp.text
 
-def invoke_mmp(user_query: str, messages: list[dict]) -> str:
-    """Invoke the advanced integrated pipeline."""
+
+def invoke_mmp(user_query: str, messages: list[dict], classifier_type: str = "bert") -> str:
+    """
+    Invoke the advanced integrated pipeline with a specified classifier.
+    """
     
-    # 1) Get the explicit query plan from the upgraded SILE
+    # 1) Get the explicit query plan
     full_schema = get_table_details()
-    query_plan_result = table_chain.invoke({
-        "input": user_query 
-    })
-    
-    if not query_plan_result:
-        return "I could not devise a plan to answer that query."
-    
-    # The result is a list, we take the first plan
+    query_plan_result = table_chain.invoke({"input": user_query})
+    if not query_plan_result: return "I could not devise a plan to answer that query."
     query_plan = query_plan_result[0]
     base_table = query_plan.base_table
     all_tables = [base_table] + query_plan.join_tables
-    
-    print(f"DEBUG ▶ Query Plan: Base='{base_table}', Joins={query_plan.join_tables}")
-    
     filtered_schema = filter_schema_for_tables(all_tables)
 
-    # 2) Build candidate_sql using the explicit query plan
+    # 2) Build candidate_sql
     candidate_sql = generate_left_join_query(filtered_schema, base_table, query_plan.join_tables)
-    print("DEBUG ▶ Advanced candidate_sql:", candidate_sql)
 
     # 3) Execute & fetch
     db = get_langchain_db()
+    quote_char = db._engine.dialect.identifier_preparer.quote
     tool = get_query_tool()
     conn = db._engine.raw_connection()
     cursor = conn.cursor()
     cursor.execute(candidate_sql)
     rows = cursor.fetchall()
     columns = [d[0] for d in cursor.description]
-    print("DEBUG ▶ Columns:", columns, "| #rows:", len(rows))
 
-    # 4) Dynamic detection of image/doc columns
+    # 4) Robust, Multi-Column Multimodal Content Detection
     insp = inspect(db._engine)
-    cols_info = insp.get_columns(base_table)
-    sample_row = rows[0] if rows else None
-
-    image_idx = None
-    doc_idx = None
-    
+    multimodal_indices = {"image": [], "document": []}
+    potential_mm_columns = []
     for i, col_name in enumerate(columns):
-        info = next((c for c in cols_info if c["name"] == col_name), None)
-        if not info:
-            continue
-        col_type = info["type"]
-
-        if isinstance(col_type, types.LargeBinary):
-            if any(tok in col_name.lower() for tok in ("img", "photo", "picture")):
-                image_idx = i
-            else:
-                doc_idx = i
-        elif isinstance(col_type, (types.String, types.Text, types.VARCHAR)) and sample_row:
-            val = sample_row[i]
-            if isinstance(val, str):
-                low = val.lower()
-                if low.endswith((".jpg", ".jpeg", ".png")):
-                    image_idx = i
-                elif low.endswith((".pdf", ".doc", ".docx", ".ppt", ".pptx")):
-                    doc_idx = i
-
-    print(f"DEBUG ▶ image_idx={image_idx}, doc_idx={doc_idx}")
+        original_table = None
+        for table in all_tables:
+            try:
+                table_cols = [c['name'] for c in insp.get_columns(table)]
+                if col_name in table_cols:
+                    original_table = table
+                    break
+            except Exception: continue
+        if not original_table: continue
+        col_info = next((c for c in insp.get_columns(original_table) if c["name"] == col_name), None)
+        if not col_info: continue
+        col_type = col_info["type"]
+        if isinstance(col_type, (types.String, types.Text, types.VARCHAR, types.LargeBinary)):
+            potential_mm_columns.append({"name": col_name, "index": i, "table": original_table})
+    if potential_mm_columns:
+        select_clauses = [f'(SELECT {quote_char(col["name"])} FROM {quote_char(col["table"])} WHERE {quote_char(col["name"])} IS NOT NULL LIMIT 1) AS {quote_char(col["name"])}' for col in potential_mm_columns]
+        sniffing_sql = f"SELECT {', '.join(select_clauses)};"
+        try:
+            sniff_cursor = conn.cursor()
+            sniff_cursor.execute(sniffing_sql)
+            first_non_null_values = sniff_cursor.fetchone()
+            sniff_cursor.close()
+            if first_non_null_values:
+                for i, col in enumerate(potential_mm_columns):
+                    sample_value = first_non_null_values[i]
+                    if isinstance(sample_value, str):
+                        low = sample_value.lower()
+                        if low.endswith((".jpg", ".jpeg", ".png")):
+                            multimodal_indices["image"].append(col["index"])
+                        elif low.endswith((".pdf", ".doc", ".docx", ".ppt", ".pptx")):
+                            multimodal_indices["document"].append(col["index"])
+        except Exception as e:
+            print(f"WARNING ▶ Content sniffing query failed: {e}.")
 
     # 5) Primary key detection
-    insp = inspect(db._engine)
     pk_info = insp.get_pk_constraint(base_table)
-    
     if pk_info and pk_info.get("constrained_columns"):
         pk_col = pk_info["constrained_columns"][0]
     else:
-        # Fallback to the first column of the explicit base table
         pk_col = insp.get_columns(base_table)[0]['name']
 
-    print(f"DEBUG ▶ Detected Primary Key: '{pk_col}' from base table: '{base_table}'")
-
-    # 6) Per-row CoT + BERT classification (Optimized Single-Call Version)
-    trainer, tokenizer = load_classifier_bert()
+    # 6) Per-row CoT + Pluggable Classification
     accepted = []
     
-    for row in tqdm(rows, desc="Processing candidate rows"):
-        # Get the full LLM output which includes reasoning and the summary line
-        llm_full_output = process_candidate_row(row, columns, image_idx, doc_idx, user_query)
-        print("🔖 [DEBUG] Full LLM output received:\n", llm_full_output)
-        
-        # Parse the output to find the specific line for BERT
-        formatted_for_bert = ""
-        for line in llm_full_output.splitlines():
-            # Use the prefix from your updated REASONING_GUIDELINES
-            cleaned_line = line.strip().replace('*', '')
-            if cleaned_line.startswith("BERT_SUMMARY:"):
-                formatted_for_bert = cleaned_line.replace("BERT_SUMMARY:", "").strip()
-                break
-        
-        # Fallback if the LLM didn't produce the required line
-        if not formatted_for_bert:
-            print("⚠️ [WARNING] Could not find 'BERT_SUMMARY:' line in LLM output. Skipping row.")
-            continue
+    if classifier_type == "bert":
+        print("\nDEBUG ▶ Initializing BERT classifier.")
+        trainer, tokenizer = load_classifier_bert()
+    elif classifier_type == "llm":
+        print("\nDEBUG ▶ Initializing LLM-native classifier chain.")
+        llm_classifier_chain = get_llm_native_classifier_chain()
+    else:
+        raise ValueError("Invalid classifier_type specified. Must be 'bert' or 'llm'.")
 
-        # Prepare the final input for BERT using the parsed line
-        bert_in = f"Question: {user_query} {formatted_for_bert}"
-        print("📝 [DEBUG] Final BERT input:", bert_in)
+    for row_idx, row in enumerate(tqdm(rows, desc=f"Processing with {classifier_type.upper()} classifier")):
+        print("\n" + "-"*20 + f" Processing Row #{row_idx+1} " + "-"*20)
         
-        # Tokenize and classify
-        ds = tokenize(bert_in, tokenizer)
-        pred = trainer.predict(ds)
+        llm_rationale = process_candidate_row(row, columns, multimodal_indices, user_query)
         
-        # Get probabilities and prediction
-        probs = F.softmax(torch.tensor(pred.predictions), dim=-1)
-        cls = int(probs.argmax().item())
-        print("📊 [DEBUG] BERT probs:", probs.tolist(), "→ class", cls)
+        print("\n" + "="*50)
+        print(f"      STEP 2: CLASSIFICATION ({classifier_type.upper()})")
+        print("="*50)
         
-        # If classified as positive, add to accepted rows
-        if cls == 0:
-            idx = columns.index(pk_col)
-            accepted.append(row[idx])
+        predicted_class = -1 # Default to an invalid class
 
+        if classifier_type == "bert":
+            bert_input_text = f"Question: {user_query} Answer: {llm_rationale}"
+            inputs = tokenizer(bert_input_text, return_tensors="pt", truncation=True, padding="max_length", max_length=512)
+            inputs = {k: v.to(trainer.model.device) for k, v in inputs.items()}
+            with torch.no_grad():
+                outputs = trainer.model(**inputs)
+                logits = outputs.logits
+            probs = F.softmax(logits, dim=-1).squeeze().tolist()
+            predicted_class = probs.index(max(probs))
+            class_map = {0: "ACCEPT", 1: "RECOMMEND", 2: "REJECT"}
+            print(f"🧠 [DEBUG] BERT Input Text:\n{bert_input_text}")
+            print(f"📈 [DEBUG] BERT Logits: {[f'{p:.3f}' for p in logits.squeeze().tolist()]}")
+            print(f"📊 [DEBUG] BERT Probabilities: [ACCEPT: {probs[0]:.3f}, RECOMMEND: {probs[1]:.3f}, REJECT: {probs[2]:.3f}]")
+            print(f"✅ [DEBUG] BERT Final Decision: Class {predicted_class} ({class_map.get(predicted_class, 'UNKNOWN')})")
 
+        elif classifier_type == "llm":
+            print("🧠 [DEBUG] LLM Classifier is being invoked (API Call #2)...")
+            # --- MODIFICATION: Call the updated function ---
+            response_obj = classify_with_llm(user_query, llm_rationale, llm_classifier_chain)
+            
+            if response_obj:
+                # --- NEW: Unpack the object and print details ---
+                label_map = {"ACCEPT": 0, "RECOMMEND": 1, "REJECT": 2}
+                predicted_label_str = response_obj.label.upper()
+                predicted_class = label_map.get(predicted_label_str, 2) # Default to REJECT if label is weird
+                
+                print(f"💬 [DEBUG] LLM Classifier Explanation: \"{response_obj.explanation}\"")
+                print(f"✅ [DEBUG] LLM Final Decision: Class {predicted_class} ({predicted_label_str})")
+            else:
+                # Handle the case where the classifier returned None (an error)
+                predicted_class = 2 # Default to REJECT with print statement
+                print("❌ [DEBUG] LLM Classifier failed. Defaulting to REJECT.")
+
+        if predicted_class == 0: # ACCEPT
+            pk_idx = columns.index(pk_col)
+            accepted.append(row[pk_idx])
+            print(f"👍 [DEBUG] Row ACCEPTED. PK: {row[pk_idx]}")
+        else:
+            pk_idx = columns.index(pk_col)
+            print(f"👎 [DEBUG] Row REJECTED. PK: {row[pk_idx]}")
+
+    # 7) Final filtered SQL on base table
     if not accepted:
         return "None of the candidate rows passed the advanced reasoning filter."
 
-    # 7) Final filtered SQL on base table
     base_query = candidate_sql.strip().rstrip(';')
     qualified_pk_col = f"{base_table}.{pk_col}"
-    pk_values_str = ', '.join(map(str, accepted))
+    pk_values_str = ', '.join(map(repr, accepted))
     final_sql = f"{base_query} WHERE {qualified_pk_col} IN ({pk_values_str});"
-    print("DEBUG ▶ Final SQL:", final_sql)
+    
+    # SQL Debug Print
+    print("\n" + "="*50)
+    print("      FINAL STEP: SQL GENERATION")
+    print("="*50)
+    print(f"🔍 [DEBUG] Final Generated SQL:\n{final_sql}")
     
     # 8) Execute final query and format answer
     final_tool = get_query_tool()
