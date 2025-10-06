@@ -40,5 +40,5 @@ data_samples/
 *results.json
 *.db
 *.sqlite
-*.csv
+!artifacts/rq2/ground_truth/*.csv
 *.jsonl
