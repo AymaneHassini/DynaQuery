@@ -1,0 +1,98 @@
+query_id,hardness,execution_accuracy,latency_seconds,generated_sql
+EASY_01,easy,1,12.605830192565918,"SELECT count(*) 
+FROM products 
+WHERE product_weight_g > 1000"
+EASY_02,easy,1,10.713792085647583,"SELECT DISTINCT payment_type 
+FROM order_payments;"
+EASY_03,easy,1,9.295061111450195,"SELECT count(*) 
+FROM sellers 
+WHERE seller_state = 'SP'"
+EASY_04,easy,1,13.237873792648315,"SELECT DISTINCT order_status 
+FROM orders;"
+EASY_05,easy,1,15.06470775604248,"SELECT product_id 
+FROM products 
+ORDER BY product_photos_qty DESC 
+LIMIT 1;"
+MEDIUM_01,medium,1,17.486425161361694,"SELECT SUM(T1.price) 
+FROM order_items AS T1 
+INNER JOIN products AS T2 ON T1.product_id = T2.product_id 
+INNER JOIN product_category_name_translation AS T3 ON T2.product_category_name = T3.product_category_name 
+WHERE T3.product_category_name_english = 'health_beauty';"
+MEDIUM_02,medium,1,15.732269048690796,"SELECT COUNT(order_id) 
+FROM orders 
+WHERE YEAR(order_purchase_timestamp) = 2017 AND MONTH(order_purchase_timestamp) = 10;"
+MEDIUM_03,medium,1,426.20920300483704,"SELECT T1.review_score 
+FROM order_reviews AS T1 
+INNER JOIN order_payments AS T2 ON T1.order_id = T2.order_id 
+WHERE T2.payment_type = 'boleto';"
+MEDIUM_04,medium,1,13.607715845108032,"SELECT AVG(payment_installments) 
+FROM order_payments 
+WHERE payment_type = 'credit_card';"
+MEDIUM_05,medium,1,40.160666942596436,"SELECT DISTINCT T1.seller_city 
+FROM sellers AS T1 
+INNER JOIN order_items AS T2 ON T1.seller_id = T2.seller_id 
+INNER JOIN products AS T3 ON T2.product_id = T3.product_id 
+INNER JOIN product_category_name_translation AS T4 ON T3.product_category_name = T4.product_category_name 
+WHERE T4.product_category_name_english = 'sports_leisure';"
+HARD_01,hard,1,18.36133885383606,"SELECT T2.customer_city, COUNT(T1.order_id) AS order_count 
+FROM orders AS T1 
+INNER JOIN customers AS T2 ON T1.customer_id = T2.customer_id 
+GROUP BY T2.customer_city 
+ORDER BY order_count DESC 
+LIMIT 5;"
+HARD_02,hard,1,17.409053087234497,"SELECT AVG(T1.freight_value) 
+FROM order_items AS T1 
+INNER JOIN products AS T2 ON T1.product_id = T2.product_id 
+WHERE T2.product_weight_g > 5000;"
+HARD_03,hard,1,30.296912908554077,"SELECT T2.product_category_name_english, COUNT(T1.product_id) 
+FROM products AS T1 
+INNER JOIN product_category_name_translation AS T2 ON T1.product_category_name = T2.product_category_name 
+GROUP BY T2.product_category_name_english 
+HAVING COUNT(T1.product_id) > 1000;"
+HARD_04,hard,1,22.465497970581055,"SELECT seller_id, AVG(price) AS avg_price 
+FROM order_items 
+GROUP BY seller_id 
+ORDER BY avg_price DESC 
+LIMIT 1;"
+HARD_05,hard,1,270.4441668987274,"SELECT T1.customer_unique_id 
+FROM customers AS T1 
+INNER JOIN orders AS T2 ON T1.customer_id = T2.customer_id 
+WHERE T1.customer_city IN ('sao paulo', 'rio de janeiro') 
+GROUP BY T1.customer_unique_id 
+HAVING COUNT(T2.order_id) > 1;"
+EXTRA_HARD_01,extra_hard,1,639.7185180187225,"SELECT T1.product_id 
+FROM products AS T1 
+INNER JOIN product_category_name_translation AS T2 ON T1.product_category_name = T2.product_category_name 
+WHERE T2.product_category_name_english = 'watches_gifts' AND T1.product_id NOT IN (
+SELECT T3.product_id 
+FROM order_items AS T3 
+INNER JOIN orders AS T4 ON T3.order_id = T4.order_id 
+INNER JOIN customers AS T5 ON T4.customer_id = T5.customer_id 
+WHERE T5.customer_city = 'sao paulo')"
+EXTRA_HARD_02,extra_hard,1,21.473493099212646,"SELECT AVG(T1.price) 
+FROM order_items AS T1 
+INNER JOIN products AS T2 ON T1.product_id = T2.product_id 
+INNER JOIN product_category_name_translation AS T3 ON T2.product_category_name = T3.product_category_name 
+WHERE T3.product_category_name_english LIKE '%fashion%';"
+EXTRA_HARD_03,extra_hard,1,21.304851055145264,"SELECT T1.customer_unique_id, SUM(T3.payment_value) AS total_spent 
+FROM customers AS T1 
+JOIN orders AS T2 ON T1.customer_id = T2.customer_id 
+JOIN order_payments AS T3 ON T2.order_id = T3.order_id 
+GROUP BY T1.customer_unique_id 
+ORDER BY total_spent DESC 
+LIMIT 1;"
+EXTRA_HARD_04,extra_hard,1,22.35382890701294,"SELECT T4.product_category_name_english 
+FROM order_reviews AS T1 
+INNER JOIN order_items AS T2 ON T1.order_id = T2.order_id 
+INNER JOIN products AS T3 ON T2.product_id = T3.product_id 
+INNER JOIN product_category_name_translation AS T4 ON T3.product_category_name = T4.product_category_name 
+GROUP BY T4.product_category_name_english 
+HAVING AVG(T1.review_score) < 3;"
+EXTRA_HARD_05,extra_hard,0,75.11063194274902,"SELECT DISTINCT T1.product_id 
+FROM order_items AS T1 
+WHERE T1.order_id IN ( 
+SELECT T2.order_id 
+FROM order_items AS T2 
+JOIN products AS T3 ON T2.product_id = T3.product_id 
+JOIN product_category_name_translation AS T4 ON T3.product_category_name = T4.product_category_name 
+WHERE T4.product_category_name_english = 'books_technical' );"

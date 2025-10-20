@@ -4,7 +4,7 @@ This repository contains the source code and experimental artifacts for the pape
 
 **"DynaQuery: A Self-Adapting Framework for Querying Structured and Multimodal Data"**
 
-The contents of this artifact support full reproduction of the main experimental results presented in the paper. The contents support full reproduction of the main experimental results for Research Questions 1, 2, and 3.
+This artifact fully supports the reproduction of all main experimental results presented in the paper, covering Research Questions 1, 2, and 3.
 
 ## Repository Structure
 
@@ -25,7 +25,7 @@ The contents of this artifact support full reproduction of the main experimental
 -   Python 3.9+
 -   `gdown` for downloading from Google Drive (`pip install gdown`).
 -   A Kaggle account and the `kaggle` CLI package.
--   A running MySQL server instance (required for the RQ2 case study and live demo).
+-   A running MySQL server instance (required for the RQ2 case study, RQ3, and live demo).
 
 ---
 
@@ -71,7 +71,9 @@ chmod 600 ~/.kaggle/kaggle.json
 Our experiments rely on a fine-tuned BERT model. For convenience and reproducibility, we provide the exact model checkpoint used in our paper.
 
 1- Navigate to the **Releases** page of this GitHub repository and download the `bert-checkpoint-rq2.zip` file.  
+
 2- Unzip the file to a stable location on your machine.
+
 3- Open `dynaquery/config/settings.py` and update the `CHECKPOINT_PATH` variable to point to the location of the unzipped directory.  
 We strongly recommend using an **absolute path**.
 
@@ -106,10 +108,13 @@ python -m experiments.rq1.run_rq3_spider_linking
 ## What this script does
 **Step 1 (Data Preparation):**  
 The script first checks for the existence of the full Spider Schema Linking dataset in `external_data/`. If found, it programmatically creates a reproducible 500-entry random sample and saves it to `outputs/spider/spider_linking_sample_500.jsonl`.
+
 **Step 2 (Evaluation):**  
 It then iterates through this newly created 500-entry sample, running both the DynaQuery (SILE) and RAG Baseline linkers for each question.
+
 **Step 3 (Reporting):**  
 Finally, it aggregates the results and prints the final performance scores to the console.
+
 **Expected Output:**
 The script will run for approximately 45 minutes, depending on API latency. Upon completion, it will print a formatted table to the console with the final scores. The F1-Score for DynaQuery (SILE) should be approximately **0.77** for DynaQuery (SILE) and **0.34** for the RAG Baseline.
 
@@ -150,7 +155,7 @@ python -m experiments.rq1.analyze_hardness \
 **Expected Output:**
 Each command will run quickly and print a formatted table breaking down the Execution Accuracy by difficulty. The overall EA for DynaQuery should be **80.0%** and for the RAG baseline should be **57.1%**.
 
-### 2.3.3 BIRD Generalization Evaluation
+### 2.1.2 BIRD Generalization Evaluation
 
 This four-stage process reproduces our results on the BIRD benchmark, as presented in Tables [4] and [5] of the paper.
 
@@ -238,7 +243,7 @@ This final script takes the failure reports generated in Stage 3a and uses `sqlg
 
 **Command:**
 ```bash
-python -m experiments.rq3.analyze_rq1_bird_failures
+python -m experiments.rq1.analyze_rq1_bird_failures
 ```
 **Output:**
 - Prints the two failure analysis summary tables (one for DynaQuery, one for RAG).  
