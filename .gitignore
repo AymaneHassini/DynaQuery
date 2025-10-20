@@ -40,4 +40,5 @@ data_samples/
 *results.json
 *.db
 *.sqlite
+*.csv
 *.jsonl
