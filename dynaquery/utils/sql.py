@@ -1,4 +1,4 @@
-# In utils/sql.py
+# utils/sql.py
 """
 SQL utility functions for query cleaning and processing.
 """

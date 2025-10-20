@@ -3,6 +3,9 @@
 """
 Basic NL-to-SQL chain implementation.
 """
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from langchain.memory import ChatMessageHistory
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from operator import itemgetter
@@ -15,23 +18,17 @@ from utils.sql import clean_sql_query
 from chains.answer_chain import format_answer
 
 def get_sqp_chain():
-    """Create the zero-shot NL-to-SQL chain."""
-    # 1) Get dependencies
+    """
+    Creates the core SQP chain that generates and executes a SQL query.
+    It returns a dictionary of all intermediate steps.
+    """
     llm = get_langchain_llm()
     execute_query = get_query_tool()
-    full_schema = get_table_details()
     
-    # 2) Create final prompt (Zero-Shot)
     final_prompt = create_zero_shot_prompt()
-    
-    # 3) SQL query generator
-
     generate_query = final_prompt | llm | StrOutputParser()
-    
-    # 4) Clean query utility
     clean_query = RunnableLambda(clean_sql_query)
     
-    # 5) Dynamic table extraction & filtering (SILE)
     sile_chain = (
         RunnablePassthrough.assign(
             query_plan=lambda x: table_chain.invoke({"input": x["question"]})[0]
@@ -44,7 +41,6 @@ def get_sqp_chain():
         )
     )
     
-    # 6) Final chain assembly
     chain = (
         sile_chain
         | RunnablePassthrough.assign(table_info=lambda x: x["filtered_schema"])
@@ -61,13 +57,7 @@ def get_sqp_chain():
         | RunnablePassthrough.assign(
             result=lambda x: execute_query.run(x["cleaned_query"])
         )
-        | (lambda x: format_answer(
-            question=x["question"], 
-            query=x["cleaned_query"], 
-            result=x["result"]
-        ))
     )
-    
     return chain
     
 def create_chat_history(messages):
@@ -88,21 +78,57 @@ def create_chat_history(messages):
             history.add_ai_message(message["content"])
     return history
 
-def invoke_sqp(question, messages):
-    """Invoke the zero-shot NL-to-SQL chain."""
+def invoke_sqp(question, messages, return_dict=False):
+    """
+    Invoke the zero-shot NL-to-SQL chain.
+    Can return either a formatted string (for UI) or a result dictionary (for benchmarks).
+    """
     chain = get_sqp_chain()
     history = create_chat_history(messages)
+    
     try:
-
-        response = chain.invoke({
+        # The chain returns a dictionary with all the steps
+        result_dict = chain.invoke({
             "question": question,
             "input": question,
             "messages": history.messages,
         })
-    except IndexError:
-        response = "I'm sorry, but I couldn't find any tables in the database that seem relevant to your question."
         
-    history.add_user_message(question)
-    history.add_ai_message(response)
-    
-    return response
+        # Format the final answer string for the UI
+        final_answer_str = format_answer(
+            question=result_dict["question"], 
+            query=result_dict["cleaned_query"], 
+            result=result_dict["result"],
+            table_info=result_dict["filtered_schema"]
+        )
+        
+        # Add the final string to the dictionary for the benchmark script
+        result_dict["final_answer_string"] = final_answer_str
+
+    except IndexError:
+        # This specific error happens when the SILE fails to return a query plan.
+        print(f"SILE returned an empty plan for query: '{question}'")
+        error_str = "I'm sorry, but I could not devise a query plan for your question."
+        if return_dict:
+            return {
+                "final_answer_string": error_str,
+                "generated_sql": "SILE_FAILURE",
+                "execution_result": "ERROR: SILE returned an empty plan."
+            }
+        return error_str
+
+    except Exception as e:
+        print(f"ERROR in SQP chain invocation: {e}")
+        error_str = "I'm sorry, but I encountered an error processing your SQL query."
+        if return_dict:
+            return {
+                "final_answer_string": error_str,
+                "generated_sql": "ERROR",
+                "execution_result": f"ERROR: {e}"
+            }
+        return error_str
+        
+    if return_dict:
+        return result_dict
+    else:
+        return result_dict["final_answer_string"]

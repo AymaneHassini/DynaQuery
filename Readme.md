@@ -43,16 +43,7 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
-### Step 3. Download Pre-trained Model Checkpoint
-
-Our experiments rely on a fine-tuned BERT model. For convenience and reproducibility, we provide the exact model checkpoint used in our paper.
-
-1- Navigate to the **Releases** page of this GitHub repository and download the `bert-checkpoint-rq2.zip` file.  
-2- Unzip the file to a stable location on your machine.
-3- Open `dynaquery/config/settings.py` and update the `CHECKPOINT_PATH` variable to point to the location of the unzipped directory.  
-We strongly recommend using an **absolute path**.
-
-### Step 4. Configure API Keys and Database Credentials
+### Step 3. Configure API Keys and Database Credentials
 
 Create a `.env` file by copying the provided template.
 
@@ -75,6 +66,15 @@ mkdir -p ~/.kaggle
 mv ~/Downloads/kaggle.json ~/.kaggle/
 chmod 600 ~/.kaggle/kaggle.json
 ```
+### Step 4. Download Pre-trained Model Checkpoint
+
+Our experiments rely on a fine-tuned BERT model. For convenience and reproducibility, we provide the exact model checkpoint used in our paper.
+
+1- Navigate to the **Releases** page of this GitHub repository and download the `bert-checkpoint-rq2.zip` file.  
+2- Unzip the file to a stable location on your machine.
+3- Open `dynaquery/config/settings.py` and update the `CHECKPOINT_PATH` variable to point to the location of the unzipped directory.  
+We strongly recommend using an **absolute path**.
+
 ### Step 5. Download Benchmark Data
 
 This script will download all large external datasets (Spider, BIRD, and our Annotated Rationale Dataset) into a new  `external_data/` directory.
@@ -89,7 +89,160 @@ This section details how to reproduce the key results from the paper.
 
 **IMPORTANT:** All commands must be run from the root directory of the DynaQuery repository.
 
-## 2.1 RQ1: MMP Generalization Case Study 
+### 2.1: RQ1: Spider and BIRD Evaluation
+
+### 2.1.1: Spider Evaluation
+
+The following three-stage process reproduces our results on the Spider benchmark, as presented in Tables [2] and [3] of the paper.
+
+#### Stage 1: Direct Schema Linking Performance 
+
+This first experiment evaluates the component-level performance (Precision, Recall, and F1-Score) of our SILE linker against the RAG baseline on a reproducible 500-entry sample.
+
+**Command:**
+```bash
+python -m experiments.rq1.run_rq3_spider_linking
+```
+## What this script does
+**Step 1 (Data Preparation):**  
+The script first checks for the existence of the full Spider Schema Linking dataset in `external_data/`. If found, it programmatically creates a reproducible 500-entry random sample and saves it to `outputs/spider/spider_linking_sample_500.jsonl`.
+**Step 2 (Evaluation):**  
+It then iterates through this newly created 500-entry sample, running both the DynaQuery (SILE) and RAG Baseline linkers for each question.
+**Step 3 (Reporting):**  
+Finally, it aggregates the results and prints the final performance scores to the console.
+**Expected Output:**
+The script will run for approximately 45 minutes, depending on API latency. Upon completion, it will print a formatted table to the console with the final scores. The F1-Score for DynaQuery (SILE) should be approximately **0.77** for DynaQuery (SILE) and **0.34** for the RAG Baseline.
+
+#### Stage 2: End-to-End Prediction Generation
+
+This script uses the sample file created in Stage 1 to run the full DynaQuery and RAG pipelines, generating the SQL queries needed for the final evaluation.
+
+**Command:**
+```bash
+python -m experiments.rq1.run_rq1_spider_e2e
+```
+**Expected Output:**
+The script will run for a significant amount of time (approx. 2-3 hours). It will create three new files in the `outputs/spider/` directory:
+- `predictions_dynaquery-schema-linking.sql`
+- `predictions_rag-schema-linking.sql`
+- `dev_gold_sample-schema-linking.sql`
+
+#### Stage 3: Execution Accuracy and Hardness Analysis 
+
+This final stage uses our robust, self-contained analysis script to calculate the end-to-end Execution Accuracy and break down the results by query difficulty. This script uses our direct-execution protocol and a heuristic-based classifier modeled on the official Spider hardness rules.
+
+
+##### **Analyze DynaQuery (SILE)**
+
+```bash
+python -m experiments.rq1.analyze_hardness \
+    --pred_file outputs/spider/predictions_dynaquery-schema-linking.sql \
+    --gold_file outputs/spider/dev_gold_sample-schema-linking.sql \
+    --db_dir external_data/spider/database/
+```
+##### **Analyze RAG**
+```bash
+python -m experiments.rq1.analyze_hardness \
+    --pred_file outputs/spider/predictions_rag-schema-linking.sql \
+    --gold_file outputs/spider/dev_gold_sample-schema-linking.sql \
+    --db_dir external_data/spider/database/
+```
+**Expected Output:**
+Each command will run quickly and print a formatted table breaking down the Execution Accuracy by difficulty. The overall EA for DynaQuery should be **80.0%** and for the RAG baseline should be **57.1%**.
+
+### 2.3.3 BIRD Generalization Evaluation
+
+This four-stage process reproduces our results on the BIRD benchmark, as presented in Tables [4] and [5] of the paper.
+
+#### Stage 1: Generate Prediction Files and Sample Data
+
+This first script is the main entry point for the BIRD experiment. It performs two key tasks:
+1. It creates a reproducible, 500-entry stratified random sample of the BIRD development set.
+2. It runs the full DynaQuery and RAG pipelines on this sample, generating "sparse" prediction files that are compatible with the official BIRD evaluation tools.
+
+**Command:**
+```bash
+python -m experiments.rq1.run_rq3_bird_e2e
+```
+**Output:**
+- `data_samples/bird_dev_sample_500.json (The stratified sample file)`
+- `outputs/bird_dynaquery/predict_dev.json (DynaQuery's (SILE) predictions)`
+- `outputs/bird_rag/predict_dev.json (RAG's predictions)`
+#### Stage 2: Generate Raw Performance Reports
+
+This stage uses our modified versions of the official BIRD evaluation scripts to execute all queries and produce raw, per-query JSON reports for both Execution Accuracy (EA) and Valid Efficiency Score (VES).
+
+**Commands for DynaQuery:**
+
+- **Get Raw EA Report**
+```bash
+python -m vendor.evaluation \
+    --predicted_sql_path outputs/bird_dynaquery/ \
+    --ground_truth_path external_data/bird/ \
+    --data_mode dev \
+    --db_root_path external_data/bird/dev_databases/ \
+    --diff_json_path external_data/bird/dev.json \
+    --output_path outputs/bird/dynaquery_bird_results_ea.json
+```
+- **Get Raw VES Report**
+```bash
+python -m vendor.evaluation_ves \
+    --predicted_sql_path outputs/bird_dynaquery/ \
+    --ground_truth_path external_data/bird/ \
+    --data_mode dev \
+    --db_root_path external_data/bird/dev_databases/ \
+    --diff_json_path external_data/bird/dev.json \
+    --output_path outputs/bird/dynaquery_bird_results_ves.json
+```
+**Commands for RAG Baseline:**
+
+- **Get Raw EA Report**
+```bash
+python -m vendor.evaluation \
+    --predicted_sql_path outputs/bird_rag/ \
+    --ground_truth_path external_data/bird/ \
+    --data_mode dev \
+    --db_root_path external_data/bird/dev_databases/ \
+    --diff_json_path external_data/bird/dev.json \
+    --output_path outputs/bird/rag_bird_results_ea.json
+```
+- **Get Raw VES Report**
+```bash
+python -m vendor.evaluation_ves \
+    --predicted_sql_path outputs/bird_rag/ \
+    --ground_truth_path external_data/bird/ \
+    --data_mode dev \
+    --db_root_path external_data/bird/dev_databases/ \
+    --diff_json_path external_data/bird/dev.json \
+    --output_path outputs/bird/rag_bird_results_ves.json
+```
+**Output:**
+- `outputs/bird/dynaquery_bird_results_ea.json`
+- `outputs/bird/dynaquery_bird_results_ves.json`
+- `outputs/bird/dynaquery_rag_results_ea.json`
+- `outputs/bird/rag_bird_results_ves.json`
+#### Stage 3: Post-Process Reports to Calculate Final Scores
+
+This stage uses our custom analysis scripts to parse the raw reports from Stage 2 and calculate the true, final scores for our 500-item sample.
+
+**Step 3a: Calculate Final Execution Accuracy (Table [6]) and Generate Failure Reports**
+```bash
+python -m experiments.rq1.calculate_true_ves
+```
+**Output:**
+- Prints the final, stratified VES breakdown tables for both models.
+
+#### Stage 4: Programmatically Analyze Failures (Table [5])
+
+This final script takes the failure reports generated in Stage 3a and uses `sqlglot` to automatically categorize every error, producing the final analysis for the paper.
+
+**Command:**
+```bash
+python -m experiments.rq3.analyze_rq1_bird_failures
+```
+**Output:**
+- Prints the two failure analysis summary tables (one for DynaQuery, one for RAG).  
+- Creates detailed `..._analyzed.json` reports in the `outputs/bird/` directory.
 
 ## 2.2 RQ2: Classifier Trade-off Analysis 
 
@@ -178,161 +331,82 @@ The analysis in the paper is based on static, verifiable execution logs from our
   - `artifacts/rq2/ground_truth/`
 
 To verify our claims, inspect these execution logs. For instance, the BERT failure in Figure 2(a) can be confirmed by examining the `"Question 2"` block in `artifacts/rq2/bert_run_log.txt`.
+## 2.3: RQ3: End-to-End System Generalization
+This final evaluation tests the **end-to-end generalization** of the full **DynaQuery framework** on our novel **Olist Multimodal Benchmark**.
+### 2.3.1 Setup for the Olist Benchmark
 
-### 2.3: RQ3: Spider and BIRD Evaluation
+The Olist benchmark requires a dedicated **MySQL database**.
 
-### 2.3.1: Spider Evaluation
+1. **Create the Database:**
+   ```sql
+   CREATE DATABASE dynaquery_olist;
+    ```
+2. **Load the Data:**
+   ```bash
+   mysql -u [username] -p dynaquery_olist < setup/olist_multimodal_benchmark.sql
+    ```
+3. **Update Credentials:**
+   Ensure your `.env` file is configured to access the `dynaquery_olist` database.
+### 2.3.2 Running the Evaluation
 
-The following three-stage process reproduces our results on the Spider benchmark, as presented in Tables [2] and [3] of the paper.
-
-#### Stage 1: Direct Schema Linking Performance 
-
-This first experiment evaluates the component-level performance (Precision, Recall, and F1-Score) of our SILE linker against the RAG baseline on a reproducible 500-entry sample.
-
-**Command:**
-```bash
-python -m experiments.rq3.run_rq3_spider_linking
-```
-## What this script does
-**Step 1 (Data Preparation):**  
-The script first checks for the existence of the full Spider Schema Linking dataset in `external_data/`. If found, it programmatically creates a reproducible 500-entry random sample and saves it to `outputs/spider/spider_linking_sample_500.jsonl`.
-**Step 2 (Evaluation):**  
-It then iterates through this newly created 500-entry sample, running both the DynaQuery (SILE) and RAG Baseline linkers for each question.
-**Step 3 (Reporting):**  
-Finally, it aggregates the results and prints the final performance scores to the console.
-**Expected Output:**
-The script will run for approximately 45 minutes, depending on API latency. Upon completion, it will print a formatted table to the console with the final scores. The F1-Score for DynaQuery (SILE) should be approximately **0.77** for DynaQuery (SILE) and **0.34** for the RAG Baseline.
-
-#### Stage 2: End-to-End Prediction Generation
-
-This script uses the sample file created in Stage 1 to run the full DynaQuery and RAG pipelines, generating the SQL queries needed for the final evaluation.
-
-**Command:**
-```bash
-python -m experiments.rq3.run_rq3_spider_e2e
-```
-**Expected Output:**
-The script will run for a significant amount of time (approx. 2-3 hours). It will create three new files in the `outputs/spider/` directory:
-- `predictions_dynaquery-schema-linking.sql`
-- `predictions_rag-schema-linking.sql`
-- `dev_gold_sample-schema-linking.sql`
-
-#### Stage 3: Execution Accuracy and Hardness Analysis 
-
-This final stage uses our robust, self-contained analysis script to calculate the end-to-end Execution Accuracy and break down the results by query difficulty. This script uses our direct-execution protocol and a heuristic-based classifier modeled on the official Spider hardness rules.
-
-
-##### **Analyze DynaQuery (SILE)**
+The evaluation consists of running our two main pipelines against their respective benchmark query suites (provided in `artifacts/rq3/benchmark_suites/`).  
+The experiment is run in two modes: a baseline **"schema-aware"** mode and a **"semantics-aware"** mode, controlled by the presence of the `dynaquery/config/schema_comments.json` file.
+1. **Run the Baseline (Schema-Aware) Evaluation:**  
+First, ensure the schema comments file does **not exist** by temporarily renaming it:
 
 ```bash
-python -m experiments.rq3.analyze_hardness \
-    --pred_file outputs/spider/predictions_dynaquery-schema-linking.sql \
-    --gold_file outputs/spider/dev_gold_sample-schema-linking.sql \
-    --db_dir external_data/spider/database/
+mv dynaquery/config/schema_comments.json dynaquery/config/schema_comments.json.bak
 ```
-##### **Analyze RAG**
+Now, run the benchmark scripts:
+
 ```bash
-python -m experiments.rq3.analyze_hardness \
-    --pred_file outputs/spider/predictions_rag-schema-linking.sql \
-    --gold_file outputs/spider/dev_gold_sample-schema-linking.sql \
-    --db_dir external_data/spider/database/
+# Run SQP Baseline
+python -m experiments.rq3.run_sqp_benchmark \
+    --benchmark_file artifacts/rq3/benchmark_suites/sqp_benchmark_suite.csv \
+    --results_file outputs/rq3/sqp_baseline_results.csv
+
+# Run MMP Baseline
+python -m experiments.rq3.run_mmp_benchmark \
+    --benchmark_file artifacts/rq3/benchmark_suites/mmp_benchmark_suite.csv \
+    --results_file outputs/rq3/mmp_baseline_results.csv
 ```
-**Expected Output:**
-Each command will run quickly and print a formatted table breaking down the Execution Accuracy by difficulty. The overall EA for DynaQuery should be **80.0%** and for the RAG baseline should be **57.1%**.
+**Expected Output:**  
+- The overall **Execution Accuracy (SQP)** should be approximately **65.0%**.  
+- The **F1-Score (MMP)** should be approximately **54.0%**.
+2. **Run the Enriched (Semantics-Aware) Evaluation:**  
+Restore the schema comments file to enable semantics-awareness:
 
-### 2.3.3 BIRD Generalization Evaluation
-
-This four-stage process reproduces our results on the BIRD benchmark, as presented in Tables [4] and [5] of the paper.
-
-#### Stage 1: Generate Prediction Files and Sample Data
-
-This first script is the main entry point for the BIRD experiment. It performs two key tasks:
-1. It creates a reproducible, 500-entry stratified random sample of the BIRD development set.
-2. It runs the full DynaQuery and RAG pipelines on this sample, generating "sparse" prediction files that are compatible with the official BIRD evaluation tools.
-
-**Command:**
 ```bash
-python -m experiments.rq3.run_rq3_bird_e2e
+mv dynaquery/config/schema_comments.json.bak dynaquery/config/schema_comments.json
 ```
-**Output:**
-- `data_samples/bird_dev_sample_500.json (The stratified sample file)`
-- `outputs/bird_dynaquery/predict_dev.json (DynaQuery's (SILE) predictions)`
-- `outputs/bird_rag/predict_dev.json (RAG's predictions)`
-#### Stage 2: Generate Raw Performance Reports
+Now, run the benchmark scripts again:
 
-This stage uses our modified versions of the official BIRD evaluation scripts to execute all queries and produce raw, per-query JSON reports for both Execution Accuracy (EA) and Valid Efficiency Score (VES).
-
-**Commands for DynaQuery:**
-
-- **Get Raw EA Report**
 ```bash
-python -m vendor.evaluation \
-    --predicted_sql_path outputs/bird_dynaquery/ \
-    --ground_truth_path external_data/bird/ \
-    --data_mode dev \
-    --db_root_path external_data/bird/dev_databases/ \
-    --diff_json_path external_data/bird/dev.json \
-    --output_path outputs/bird/dynaquery_bird_results_ea.json
-```
-- **Get Raw VES Report**
-```bash
-python -m vendor.evaluation_ves \
-    --predicted_sql_path outputs/bird_dynaquery/ \
-    --ground_truth_path external_data/bird/ \
-    --data_mode dev \
-    --db_root_path external_data/bird/dev_databases/ \
-    --diff_json_path external_data/bird/dev.json \
-    --output_path outputs/bird/dynaquery_bird_results_ves.json
-```
-**Commands for RAG Baseline:**
+# Run SQP Enriched
+python -m experiments.rq3.run_sqp_benchmark \
+    --benchmark_file artifacts/rq3/benchmark_suites/sqp_benchmark_suite.csv \
+    --results_file outputs/rq3/sqp_enriched_results.csv
 
-- **Get Raw EA Report**
-```bash
-python -m vendor.evaluation \
-    --predicted_sql_path outputs/bird_rag/ \
-    --ground_truth_path external_data/bird/ \
-    --data_mode dev \
-    --db_root_path external_data/bird/dev_databases/ \
-    --diff_json_path external_data/bird/dev.json \
-    --output_path outputs/bird/rag_bird_results_ea.json
+# Run MMP Enriched
+python -m experiments.rq3.run_mmp_benchmark \
+    --benchmark_file artifacts/rq3/benchmark_suites/mmp_benchmark_suite.csv \
+    --results_file outputs/rq3/mmp_enriched_results.csv
 ```
-- **Get Raw VES Report**
-```bash
-python -m vendor.evaluation_ves \
-    --predicted_sql_path outputs/bird_rag/ \
-    --ground_truth_path external_data/bird/ \
-    --data_mode dev \
-    --db_root_path external_data/bird/dev_databases/ \
-    --diff_json_path external_data/bird/dev.json \
-    --output_path outputs/bird/rag_bird_results_ves.json
-```
-**Output:**
-- `outputs/bird/dynaquery_bird_results_ea.json`
-- `outputs/bird/dynaquery_bird_results_ves.json`
-- `outputs/bird/dynaquery_rag_results_ea.json`
-- `outputs/bird/rag_bird_results_ves.json`
-#### Stage 3: Post-Process Reports to Calculate Final Scores
+**Expected Output:**  
+- The overall **Execution Accuracy (SQP)** should be approximately **95.0%**.  
+- The **F1-Score (MMP)** should be approximately **93.0%**.
+### 2.3.3 Verifying the Results
 
-This stage uses our custom analysis scripts to parse the raw reports from Stage 2 and calculate the true, final scores for our 500-item sample.
+The summary results printed to the console by the scripts directly correspond to **Tables 9 and 10** in the paper.  
+For a more detailed, row-by-row verification of our findings, we provide the complete outputs from our original experimental run as **verifiable artifacts**.
 
-**Step 3a: Calculate Final Execution Accuracy (Table [6]) and Generate Failure Reports**
-```bash
-python -m experiments.rq3.calculate_true_ves
-```
-**Output:**
-- Prints the final, stratified VES breakdown tables for both models.
+These are located in the `artifacts/rq3/verifiable_logs/` directory and include:
 
-#### Stage 4: Programmatically Analyze Failures (Table [5])
+- **Detailed Result CSVs** (e.g., `results-sqp-enriched.csv`):  
+  These files contain the generated SQL for each query (for SQP) or the final set of accepted IDs (for MMP), allowing for a direct audit of our accuracy calculations.
 
-This final script takes the failure reports generated in Stage 3a and uses `sqlglot` to automatically categorize every error, producing the final analysis for the paper.
-
-**Command:**
-```bash
-python -m experiments.rq3.analyze_rq3_bird_failures
-```
-**Output:**
-- Prints the two failure analysis summary tables (one for DynaQuery, one for RAG).  
-- Creates detailed `..._analyzed.json` reports in the `outputs/bird/` directory.
+- **Verbose Log Files** (e.g., `output-sqp-enriched.log`):  
+  These files contain the complete console trace for each run, showing the step-by-step reasoning of the LLM components.
 
 
 ---

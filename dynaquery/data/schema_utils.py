@@ -10,8 +10,9 @@ from langchain.chains.openai_tools import create_extraction_chain_pydantic
 from pydantic.v1 import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from config.settings import DB_USER, DB_PASSWORD, DB_HOST, DB_NAME, LLM_MODEL
-from data.db_connector import get_inspector
+from dynaquery.config.settings import DB_USER, DB_PASSWORD, DB_HOST, DB_NAME, LLM_MODEL
+from dynaquery.data.db_connector import get_inspector
+import json
 
 # Make sure environment variables are not None
 if not all([DB_USER, DB_PASSWORD, DB_HOST, DB_NAME]):
@@ -25,21 +26,41 @@ class QueryPlan(BaseModel):
     base_table: str = Field(description="The single table that contains the primary entity the user is asking for.")
     join_tables: List[str] = Field(description="A list of any other tables that need to be joined to the base table to answer the query.")
 
+def load_schema_comments():
+    """Loads the semantic schema comments from a JSON file."""
+    try:
+        with open('config/schema_comments.json', 'r') as f: 
+            return json.load(f)
+    except FileNotFoundError:
+        print("WARNING: schema_comments.json not found. Proceeding with raw schema.")
+        return {"tables": {}, "columns": {}}
+    except json.JSONDecodeError:
+        print("WARNING: Could not parse schema_comments.json. Proceeding with raw schema.")
+        return {"tables": {}, "columns": {}}
+
 @st.cache_data
 def get_table_details():
     """
-    Extract table details from the database and format as a string.
+    Extract table details from the database, enriches them with semantic comments,
+    and formats as a string.
     
     Returns:
-        A formatted string containing details of all tables, columns, 
-        primary keys, and foreign keys in the database.
+        A formatted, semantically enriched string containing details of all tables.
     """
+    schema_comments = load_schema_comments()
+    table_comments = schema_comments.get("tables", {})
+    column_comments = schema_comments.get("columns", {})
+    
     inspector = get_inspector()
     table_names = inspector.get_table_names()
     metadata_str = ""
     
     for table_name in table_names:
-        metadata_str += f"Table Name: {table_name}\nColumns:\n"
+        table_comment = table_comments.get(table_name, "")
+        if table_comment:
+            metadata_str += f"Table Name: {table_name} -- {table_comment}\nColumns:\n"
+        else:
+            metadata_str += f"Table Name: {table_name}\nColumns:\n"
         
         # Get column details
         columns = inspector.get_columns(table_name)
@@ -47,14 +68,22 @@ def get_table_details():
             col_name = col["name"]
             col_type = str(col["type"])
             is_nullable = col["nullable"]
-            metadata_str += f" - {col_name} ({col_type}), nullable={is_nullable}\n"
+            
+            fully_qualified_col_name = f"{table_name}.{col_name}"
+            col_comment = column_comments.get(fully_qualified_col_name, "")
+            
+            metadata_str += f" - {col_name} ({col_type}), nullable={is_nullable}"
+            if col_comment:
+                metadata_str += f" -- {col_comment}\n"
+            else:
+                metadata_str += "\n"
         
-        # Get primary key details
+        # Get primary key details 
         pk = inspector.get_pk_constraint(table_name)
         pk_columns = ", ".join(pk.get("constrained_columns", []))
         metadata_str += f"Primary Key Columns: {pk_columns if pk_columns else 'None'}\n"
         
-        # Get foreign key details
+        # Get foreign key details 
         fks = inspector.get_foreign_keys(table_name)
         if fks:
             metadata_str += "Foreign Keys:\n"

@@ -4,9 +4,12 @@ Streamlit application for the DynaQuery Framework.
 Provides a user interface to interact with and compare SQP and the two versions of MMP,
 preserving the original simple layout with enhanced comparison and UI locking.
 """
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import streamlit as st
-from chains.sqp import invoke_sqp
-from chains.mmp import invoke_mmp
+from dynaquery.chains.sqp import invoke_sqp
+from dynaquery.chains.mmp import invoke_mmp
 
 def main():
     """Main application entry point."""
@@ -62,11 +65,15 @@ def main():
         with st.chat_message("assistant"):
             with st.spinner(f"Processing with {pipeline_to_run}..."):
                 if "SQP" in pipeline_to_run:
-                    response = invoke_sqp(query_to_run, st.session_state.messages)
+                    response_obj = invoke_sqp(query_to_run, st.session_state.messages, return_dict=True)
+                    response = response_obj.get("final_answer_string", "An error occurred in SQP.")
+
                 elif "BERT" in pipeline_to_run:
-                    response = invoke_mmp(query_to_run, st.session_state.messages, classifier_type="bert")
+                    response_obj = invoke_mmp(query_to_run, st.session_state.messages, classifier_type="bert")
+                    response = response_obj.get("final_answer_string", "An error occurred in MMP-BERT.")
                 else: # LLM-Native
-                    response = invoke_mmp(query_to_run, st.session_state.messages, classifier_type="llm")
+                    response_obj = invoke_mmp(query_to_run, st.session_state.messages, classifier_type="llm")
+                    response = response_obj.get("final_answer_string", "An error occurred in MMP-LLM.")
                 st.markdown(response)
         
         st.session_state.messages.append({"role": "assistant", "content": response})

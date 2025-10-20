@@ -11,7 +11,6 @@ from pydantic import BaseModel, Field
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 
-# --- Configuration ---
 BENCHMARK_FILE_PATH = "external_data/dynaquery_eval_5k_benchmark/test_split.csv"
 LLM_MODEL_NAME = LLM_MODEL
 

@@ -11,7 +11,7 @@ from transformers import (
     Trainer,
     TrainingArguments
 )
-from config.settings import CHECKPOINT_PATH
+from dynaquery.config.settings import CHECKPOINT_PATH
 
 # Set device
 device = 'cuda' if torch.cuda.is_available() else 'cpu'

@@ -1,0 +1,95 @@
+
+--- Running Query ID: EASY_01 (Hardness: easy) ---
+Query: How many products weigh more than 1000g?
+Result for EASY_01: Correct = True, Latency = 12.61s
+
+--- Running Query ID: EASY_02 (Hardness: easy) ---
+Query: What are the different payment types used?
+Result for EASY_02: Correct = True, Latency = 10.71s
+
+--- Running Query ID: EASY_03 (Hardness: easy) ---
+Query: How many sellers are there in the state of 'SP'?
+Result for EASY_03: Correct = True, Latency = 9.30s
+
+--- Running Query ID: EASY_04 (Hardness: easy) ---
+Query: Show me all the different order statuses.
+Result for EASY_04: Correct = True, Latency = 13.24s
+
+--- Running Query ID: EASY_05 (Hardness: easy) ---
+Query: What is the product ID for the product with the most photos?
+Result for EASY_05: Correct = True, Latency = 15.06s
+
+--- Running Query ID: MEDIUM_01 (Hardness: medium) ---
+Query: What is the total price for all items in the 'health_beauty' category?
+Result for MEDIUM_01: Correct = True, Latency = 17.49s
+
+--- Running Query ID: MEDIUM_02 (Hardness: medium) ---
+Query: How many orders were placed in the month of October 2017?
+Result for MEDIUM_02: Correct = True, Latency = 15.73s
+
+--- Running Query ID: MEDIUM_03 (Hardness: medium) ---
+Query: List the review scores for orders paid by 'boleto'.
+Result for MEDIUM_03: Correct = True, Latency = 426.21s
+
+--- Running Query ID: MEDIUM_04 (Hardness: medium) ---
+Query: What is the average number of payment installments for credit card payments?
+Result for MEDIUM_04: Correct = True, Latency = 13.61s
+
+--- Running Query ID: MEDIUM_05 (Hardness: medium) ---
+Query: Show the cities of sellers who have sold products in the 'sports_leisure' category.
+Result for MEDIUM_05: Correct = True, Latency = 40.16s
+
+--- Running Query ID: HARD_01 (Hardness: hard) ---
+Query: List the top 5 cities by the total number of orders. Show the city and the order count.
+Result for HARD_01: Correct = True, Latency = 18.36s
+
+--- Running Query ID: HARD_02 (Hardness: hard) ---
+Query: What is the average freight value for products weighing more than 5000g?
+Result for HARD_02: Correct = True, Latency = 17.41s
+
+--- Running Query ID: HARD_03 (Hardness: hard) ---
+Query: Show the product categories and the count of products in each, for categories with more than 1000 products.
+Result for HARD_03: Correct = True, Latency = 30.30s
+
+--- Running Query ID: HARD_04 (Hardness: hard) ---
+Query: Which seller has the highest average product price? Return the seller ID and their average price.
+Result for HARD_04: Correct = True, Latency = 22.47s
+
+--- Running Query ID: HARD_05 (Hardness: hard) ---
+Query: List all customers from 'sao paulo' or 'rio de janeiro' who have placed more than one order.
+Result for HARD_05: Correct = True, Latency = 270.44s
+
+--- Running Query ID: EXTRA_HARD_01 (Hardness: extra_hard) ---
+Query: Show me watches except those ordered by customers from 'sao paulo'.
+Result for EXTRA_HARD_01: Correct = True, Latency = 639.72s
+
+--- Running Query ID: EXTRA_HARD_02 (Hardness: extra_hard) ---
+Query: What is the average price of products in categories that have 'fashion' in their name?
+Result for EXTRA_HARD_02: Correct = True, Latency = 21.47s
+
+--- Running Query ID: EXTRA_HARD_03 (Hardness: extra_hard) ---
+Query: Find the customer who has spent the most money. Return their unique ID and the total amount spent.
+Result for EXTRA_HARD_03: Correct = True, Latency = 21.30s
+
+--- Running Query ID: EXTRA_HARD_04 (Hardness: extra_hard) ---
+Query: List the product categories that have an average review score lower than 3.
+Result for EXTRA_HARD_04: Correct = True, Latency = 22.35s
+
+--- Running Query ID: EXTRA_HARD_05 (Hardness: extra_hard) ---
+Query: Which products were sold in orders that also contained a product from the 'books_technical' category?
+Result for EXTRA_HARD_05: Correct = False, Latency = 75.11s
+  - System Result: [('4535b0e1091c278dfd193e5a1d63b39f',), ('4e3f399366b0047a572b6682f9bb166e',), ('8b41f2becf919f6177cca1ff15dfd311',), ('edd087ed331c3ce178ec3489b9ecf117',), ('4f823b57fbf2a359f9df38dc72ef0da6',), ('20fb650ad1615624d7e202031400f695',), ('cd9dfd413f60d6cdb25aa4a3e1960e59',), ('173e9fe34bfe97f3a5e6dc57fe897b74',), ('3f34959740c72f0e661df7d18465c955',), ('4eda4a7eac36a8ff69db8880c4d95b7b',), ('ce87eb0f80420c505b53adef21bf93d6',), ('ce4951e4e9e73626368438f1dbc05dd2',), ('b8998cc6607a73af89458be145ae150d',), ('8e96968cb84d255da9c325f3906909ad',), ('f0a720fc3ab33276bc8bb46595996083',), ('08bcc2d85da3a9c0e2ac1cc28b67418d',), ('93f7388e80dcc16be349c47fc83f56d0',), ('cfcb14e1f3b7ac5213b4e2ae7697598b',), ('ebb7abe5ebd35c40595ab16a4ada5c9d',), ('1a2a204d5ef11c75f78d34ab0456c9ed',), ('44feb28a74abb0f2f303412d60160750',), ('69268ea255c0a531db56f066777fdcf1',), ('514a9597737e8355eb57932c4f1faf9b',), ('d8f1b415091ab79b62ac80443d865ca6',), ('bdf5efab9b8b85e6a49603007646f763',), ('28b4eced95a52d9c437a4caf9d311b95',), ('3bd016185be10ea4b4b2baa6e7dd9e9b',), ('b15dbbf17c3f7db9d6e9acff41c34ab8',), ('0c9a1721e65cea1561c531b0e166cb1e',), ('8c0794180bc059d1af097905d7352cfa',), ('234af61e508645c6c1a470b8be9e28f2',), ('7be98a47ebb9ce48dfa91163428bb9d9',), ('74b68e3a8bb6c6528cf025d1549bc74a',), ('d7a023eecac412d29d49735e9e9b629f',), ('761a7d7da15ca2d6f0aaf29e22bd1479',), ('0c90ffc8c44fe5d3e020002cc4da9496',), ('cdd914e78124a73cc28a165cfc4a0bbc',), ('bef910a536381ef9bff176a8b3789fa2',), ('686476adb39d272e27b0dd7c111d3762',), ('05d7e1ea3fb7a5e3bf83bb9801603418',), ('3a4113a7009a9fda9cc0021c98b74332',), ('dcc0e81eb76da517c6145e0c64b07c3a',), ('0e10dd7cc1cc793351f0a259df91cdfa',), ('6d68112743e7ed2de3932554b033f544',), ('5b74831156cb4a6957d9a00caa41d4ea',), ('c04b8195870068ff5c495f269a0bc993',), ('d39d1b0a696aa782911206ec3c023ab1',), ('8adb806e404876383ce47845af3ddcb8',), ('1da502ed939a029f4bee6cdc8341b4ac',), ('23e74bef13b99119b1828789058a126f',), ('652683d85a89f3b134e44989a601bc58',), ('924a205abfeafade92cf663f19265e94',), ('7bdcad1796b53a8f633c1cfd82102efe',), ('368e069951582162e3d1d2151051e978',), ('fcd119ff3868ddbb0013932039418ede',), ('58af7b4490d18df213fb7c5e7a42ce97',), ('6fa8b8abbb489a0abba6ad7b79c7ecd9',), ('e3991d2e1045bf9b4f3474f50d5df842',), ('625d78433e8cc9aadb5a88b4e45e4a30',), ('4fffe01ed3a51b4d770387d00c4d1d64',), ('a8b5e02c7f69ca5ccdfa99417079d135',), ('469ef39f0ddc59c8913d9d5a62318e40',), ('04808b9886b62b9c06b4c433e420dfbf',), ('5563f6b699b362e1bd6a2e1e650f52bd',), ('2885aad25d7d1963d3731a9a6ec86306',), ('2feb83b6c3b3380b8822146538c70f7c',), ('15562257608ee6ca7974526ef79eacda',), ('bb08ae1ab72eab2720e31508966b7742',), ('69201d0b228c325952d3585abf43d66e',), ('13de26d4d66e20b9262c0ddd00cf5cd8',), ('ffedbd68fa6f44e788ff6c2db8094715',), ('dede86846047964c7f2918e48e6dd14a',), ('4320c4939b8e02c48b7fcbbd2674fb86',), ('41888ddc79f5e2204681abacf72d608d',), ('180fa760feb6277fe75df285149fee2b',), ('602683dfc9bccec955b0527af47a15ed',), ('4d5bb93bfa70f67cda10b1428f2a252c',), ('e65ab426efaf65e083b917d2e9eac80d',), ('848ee292f94a4a1f90568ee34d264353',), ('9070fbe936bd54b8a72e0ffe4a6a2564',), ('ffd60d515c690a976c497e75cd2336f4',), ('b44ac72ece514e2e7985803cf7cefbc5',), ('8db99620b0b21f34ff4199bc6450bdd6',), ('b431c295eebd586febf73553f262bbcf',), ('cc1cf854a12251181a78ee8e39f2819b',), ('f0d393949e1e06ecb628e7ad8ebd3bab',), ('8209695ad737d7180eee4aa7f734f579',), ('2a1585645ae682d38280cbfb12ab8eca',), ('781883ae609d8782630ad91af967e018',), ('0b910ddd6185e20c016c2113fc864eb4',), ('ee147042ac9bc25ab2ad108442bbecde',), ('364c1b9489e407ae88e1d12e89514428',), ('df3975eccff1508fbdf8874d3b4edadc',), ('0d1d4c0ee61f3136062c253eb289a3e7',), ('d500c64ef3ac31087d21f93faacec268',), ('9d7e2c8835276b06ea5facb880789f4b',), ('1589d392201547c9b78a117c0e2191dd',), ('d655dc03de9b831ed22639631ab2958f',), ('05b4834511e1cdb34899d52589ac9271',), ('723ead29958198e721988ee6d3022ed5',), ('6efb6f992e2f51bc224145a2a9e3ec38',), ('5ba3ea3659a247e6c9b0a397427a4aa6',), ('09003e51b4ca5793bfcdc42026abd63a',), ('822448321a1c019d77daab0994ffee35',), ('1d2ead71bc1ce7734db8e8a241fd1f1e',), ('89cd489d2c75553eb7fd7de3e25dc7a7',), ('d202f59ac5acd0b1dc1049b8b368cbfd',), ('933e747b4512a8047e809f90b98d5eae',), ('043f9194337f5d8cd7092f581e0bc394',), ('15b5c55e291cc54d93c46c9a3c9bb9b2',), ('0288532d075e4bf58e044c92e68c94cd',), ('ca17b18b38db6e0d2c33d362322f2a06',), ('84ec15b5b36b11ff02a74d3b81bc96cc',), ('e59630cdf7c240d11dd424c08aadbc42',), ('75747bce1abad71ec9edfb9ca6dd509c',), ('0c85b3e0748fdc1a15f227525d317821',), ('2b24cfb25ee90eaa2ebc34844fba07b9',), ('e77ebe35bf8e1b846da15aabbc1247e9',), ('fde90f06296b26995fd0de6f16610d70',), ('2fea0f2cec6b6324a277d4a61c2ed2c6',), ('a71f212d0b63c6c197437b928234b8bc',), ('04e4e5d3a78ebbd1a943769293829c68',), ('cdc73b19516ca697a025b4e81ccb631b',), ('237428d1c44f69d9f7eb073c1baf34e5',), ('b5aa3dc3e3492bfa3dfed618a413e779',), ('654ccc4e5459e7ba6b8d9fb04c45b9db',), ('761989673935a5d17b8ea130576beb2a',)]
+  - Ground Truth Result: [('28b4eced95a52d9c437a4caf9d311b95',), ('d655dc03de9b831ed22639631ab2958f',), ('fde90f06296b26995fd0de6f16610d70',), ('2fea0f2cec6b6324a277d4a61c2ed2c6',)]
+
+--- SQP Benchmark Complete ---
+
+--- Overall Summary ---
+Average Execution Accuracy: 0.950
+
+--- Summary by Hardness ---
+hardness
+easy          1.0
+extra_hard    0.8
+hard          1.0
+medium        1.0
+Name: execution_accuracy, dtype: float64

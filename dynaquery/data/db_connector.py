@@ -11,7 +11,7 @@ from langchain_community.utilities.sql_database import SQLDatabase
 from langchain_community.tools.sql_database.tool import QuerySQLDataBaseTool
 from dotenv import load_dotenv, find_dotenv
 
-from config.settings import DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, get_mysql_uri
+from dynaquery.config.settings import DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, get_mysql_uri
 
 def get_mysql_connection():
     """

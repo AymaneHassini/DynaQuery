@@ -4,8 +4,8 @@ Answer formatting chain for providing human-friendly responses.
 """
 from langchain_core.output_parsers import StrOutputParser
 
-from models.llm import get_langchain_llm
-from prompts.templates import answer_prompt
+from dynaquery.models.llm import get_langchain_llm
+from dynaquery.prompts.templates import answer_prompt
 
 def get_answer_chain():
     """
@@ -14,7 +14,6 @@ def get_answer_chain():
     Returns:
         A runnable chain that formats SQL results into natural language
     """
-    # Create LLM
     llm = get_langchain_llm()
     
     # Build and return the answer chain

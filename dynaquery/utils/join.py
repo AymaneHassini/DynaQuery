@@ -5,31 +5,29 @@ SQL JOIN generation utilities.
 from typing import List
 from langchain_core.output_parsers import StrOutputParser
 
-from models.llm import get_langchain_llm
-from prompts.templates import join_prompt
+from dynaquery.models.llm import get_langchain_llm
+from dynaquery.prompts.templates import join_prompt
 
 def create_join_chain():
     """Creates a LangChain for generating SQL JOIN clauses."""
     llm_join = get_langchain_llm()
     return join_prompt | llm_join | StrOutputParser()
 
-def generate_left_join_query(filtered_schema: str, base_table: str, join_tables: List[str]) -> str:
+def generate_join_clauses(filtered_schema: str, base_table: str, join_tables: List[str]) -> str:
     """
-    Generate a candidate SQL query from an explicit query plan.
+    Generates the FROM and JOIN clauses for a SQL query.
     
-    Args:
-        filtered_schema: Database schema filtered for the relevant tables.
-        base_table: The single, explicit base table for the query.
-        join_tables: A list of tables to LEFT JOIN to the base table.
-        
     Returns:
-        str: Generated SQL query with appropriate joins.
+        str: A string like "FROM base_table LEFT JOIN table2 ON ..."
     """
     if not base_table:
         return ""
         
+    # Start with the FROM clause
+    from_and_joins = f"FROM {base_table}"
+    
     if not join_tables:
-        return f"SELECT * FROM {base_table};"
+        return from_and_joins
     
     join_chain = create_join_chain()
     
@@ -39,9 +37,10 @@ def generate_left_join_query(filtered_schema: str, base_table: str, join_tables:
         "join_tables": ", ".join(join_tables)
     }
     
-    join_clauses = join_chain.invoke(join_input)
+    join_clauses_str = join_chain.invoke(join_input)
     
-    if "no join" in join_clauses.strip().lower():
-        return f"SELECT * FROM {base_table};"
-    else:
-        return f"SELECT * FROM {base_table} {join_clauses};"
+    if "no join" not in join_clauses_str.strip().lower():
+        # Append the generated JOIN clauses
+        from_and_joins += f" {join_clauses_str}"
+        
+    return from_and_joins

@@ -1,4 +1,4 @@
-# In utils/example_selector.py
+# utils/example_selector.py
 
 from langchain_community.vectorstores import Chroma
 from langchain_core.example_selectors import SemanticSimilarityExampleSelector
@@ -19,7 +19,7 @@ def get_spider_example_selector(embedding_model):
     if _vector_store_singleton is None:
         print("Building the few-shot example vector store for the first time...")
         
-        SPIDER_TRAIN_PATH = "/Users/aymenhassini/Downloads/spider_data/train_spider.json" 
+        SPIDER_TRAIN_PATH = "spider/train_spider.json" 
         
         try:
             with open(SPIDER_TRAIN_PATH, "r", encoding='utf-8') as f:

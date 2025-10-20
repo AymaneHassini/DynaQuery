@@ -33,6 +33,7 @@ You are a meticulous classification expert. Your task is to analyze a user's que
 - **REJECT** → NONE of the conditions are satisfied.  
 
 ⚠️ Important: If even ONE condition is satisfied, but others fail, you MUST classify as **RECOMMEND**, not REJECT. Only assign REJECT when ZERO conditions match.
+
 ---
 **User's Question:** "{question}"
 **Reasoning Text:**

@@ -1,0 +1,44 @@
+{
+  "tables": {
+    "products": "Contains individual products available for sale in the catalog.",
+    "customers": "Contains information about the customer associated with each order.",
+    "sellers": "Contains information about the sellers who list products.",
+    "orders": "The central table for transactions, linking a customer to a purchase.",
+    "order_items": "A bridge table detailing the specific products and sellers within each order.",
+    "order_payments": "Contains details about the payment method(s) for each order.",
+    "order_reviews": "Contains customer-submitted reviews for completed orders.",
+    "product_category_name_translation": "A mapping table to translate product category names from Portuguese to English.",
+    "geolocation": "Contains Brazilian zip code prefixes and their corresponding latitude/longitude coordinates."
+  },
+  "columns": {
+    "products.product_id": "Unique identifier for a product.",
+    "products.product_category_name": "The product's category name, in Portuguese.",
+    "products.image_url": "A URL pointing to an image of the product.",
+
+    "product_category_name_translation.product_category_name": "The category name in Portuguese, used for joining.",
+    "product_category_name_translation.product_category_name_english":  "The category name in English. Example values include: 'health_beauty', 'watches_gifts', 'sports_leisure'.",
+
+    "orders.order_id": "Unique identifier for an order.",
+    "orders.customer_id": "Identifier for the customer who placed the order.",
+    "orders.order_purchase_timestamp": "The date and time the customer made the purchase.",
+
+    "order_items.order_id": "Identifier for the order this item belongs to.",
+    "order_items.product_id": "Identifier for the product included in this order item.",
+    "order_items.seller_id": "Identifier for the seller who sold this item.",
+    "order_items.price": "The price of this single item.",
+    "order_items.freight_value": "The shipping cost for this single item.",
+
+    "customers.customer_id": "Identifier for a customer associated with a single order.",
+    "customers.customer_unique_id": "A persistent identifier for each person, linking all of their orders.",
+    "customers.customer_city": "The city of the customer's address.",
+    "customers.customer_state": "The state of the customer's address.",
+
+    "sellers.seller_id": "Unique identifier for a seller.",
+    "sellers.seller_city": "The city where the seller is located.",
+
+    "order_payments.payment_type": "The method used for payment (e.g., 'credit_card', 'boleto').",
+    "order_payments.payment_installments": "The number of installments for a credit card payment.",
+
+    "order_reviews.review_score": "The customer's rating for an order, on a scale of 1 to 5."
+  }
+}

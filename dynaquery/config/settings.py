@@ -24,7 +24,7 @@ LANGCHAIN_TRACING_V2 = os.getenv("LANGCHAIN_TRACING_V2")
 # Model settings
 LLM_MODEL = "gemini-2.5-pro"
 TEMPERATURE = 0
-CHECKPOINT_PATH = "/Users/aymenhassini/Desktop/workspace-29-sept/best-model-sept-29"  # Change to the Path to BERT model checkpoint after downloading it from RELEASES (check README)
+CHECKPOINT_PATH = "/Users/aymenhassini/Desktop/workspace-29-sept/best-model-sept-29"  # This is from my local- Change to the Path to BERT model checkpoint after downloading it from RELEASES (check README)
 
 # Database URI builder
 def get_mysql_uri():
