@@ -169,7 +169,7 @@ def run_evaluation(test_run_limit: int = None, debug_mode: bool = False):
     
     target_names = ['ACCEPT (Class 0)', 'RECOMMEND (Class 1)', 'REJECT (Class 2)']
     labels_to_report= [0,1,2]
-    # Generate the classification report from sklearn
+    # Generate the classification report from scikit-learn
     report = classification_report(
         ground_truths, 
         predictions, 
